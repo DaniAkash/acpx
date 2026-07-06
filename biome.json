@@ -175,6 +175,16 @@
           }
         }
       }
+    },
+    {
+      "includes": ["**/agent-mcp-manager/src/_catalog/client-configs.ts"],
+      "linter": {
+        "rules": {
+          "nursery": {
+            "noExcessiveLinesPerFile": "off"
+          }
+        }
+      }
     }
   ],
   "assist": {
