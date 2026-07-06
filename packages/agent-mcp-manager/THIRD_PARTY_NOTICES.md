@@ -1,24 +1,47 @@
 # Third-Party Notices
 
-`agent-mcp-manager` includes data derived from the following third-party
-projects.
+`agent-mcp-manager` is authored under MIT. This file discloses the
+third-party projects whose work informed the catalog and the
+architectural choices behind v0.0.4.
 
-## mcp-gateway (docker/mcp-gateway)
+No source code from any listed project is incorporated in the
+published package. Where a project is listed under an AGPL license,
+the disclosure exists because we read the project's public data as a
+research reference; we did not import or copy code, and the published
+package has no runtime dependency on it.
+
+## smithery-ai/cli (design reference; AGPL-3.0)
+
+- Source: https://github.com/smithery-ai/cli
+- License: AGPL-3.0
+- Role: research and cross-check reference for the per-client
+  configuration data in `src/_catalog/client-configs.ts`. Every
+  catalog entry has a `sources.smithery` URL pointing at the specific
+  block we cross-checked in `src/config/clients.ts`. First-party MCP
+  documentation for each client is the primary source
+  (`sources.firstParty`); Smithery is corroboration only.
+- What we DID: read the file to learn what fields exist per client,
+  what tag values each client's parser expects, and which URL / env /
+  command field names are non-default. Populated our own tables from
+  a mix of first-party docs and this cross-check.
+- What we did NOT do: copy the populated `CLIENTS` map or the
+  interface bodies verbatim, depend on the Smithery npm package at
+  runtime, or copy any command-based install templates.
+
+## docker/mcp-gateway (historical reference; MIT)
 
 - Source: https://github.com/docker/mcp-gateway
 - License: MIT
-- Files derived from this project (located under `src/_vendor/`):
-  - `catalog.ts` — the v0.1 agent catalog (per-OS config paths,
-    install-check heuristics, emitter selection) is hand-derived from
-    upstream `pkg/client/config.yml`. Specifically the entries for
-    `claude-code`, `claude-desktop`, `cursor`, `vscode`, `gemini`,
-    `codex`, and `zed`.
+- Role: the v0.0.3 catalog was hand-derived from
+  `pkg/client/config.yml`. v0.0.4 replaces that with a hand-authored
+  catalog whose write shapes are informed by both docker/mcp-gateway
+  (for stdio) and smithery-ai/cli (for HTTP). The vendored YAML has
+  been removed from this package as of v0.0.4; only the historical
+  git history under the feat/mcp-manager-v0.0.4-fp branch retains it.
+- No source code from mcp-gateway is incorporated in the published
+  package.
 
-No source code from `mcp-gateway` is incorporated; only the catalog
-shape (paths and config-file conventions). Emitter implementations are
-TypeScript-native and do not depend on `yq` or any Go code.
-
-### MIT License
+### MIT License (docker/mcp-gateway)
 
 ```
 Copyright (c) Docker, Inc.
