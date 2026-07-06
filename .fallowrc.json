@@ -31,6 +31,15 @@
       }
     },
     {
+      "files": ["**/_catalog/**"],
+      "rules": {
+        "unused-exports": "off",
+        "unused-files": "off",
+        "unused-types": "off",
+        "private-type-leaks": "off"
+      }
+    },
+    {
       "files": ["**/*.test.ts", "**/*.spec.ts", "**/test/**", "**/*.config.ts"],
       "rules": {
         "unused-exports": "off",
