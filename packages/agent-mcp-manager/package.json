@@ -46,9 +46,7 @@
     "build": "bunup",
     "dev": "bunup --watch",
     "test": "bun test",
-    "typecheck": "tsc --noEmit",
-    "sync-catalog": "bun run scripts/sync-catalog.ts",
-    "sync-catalog:check": "bun run scripts/sync-catalog.ts --check"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
@@ -56,8 +54,7 @@
   },
   "devDependencies": {
     "bunup": "^0.16.31",
-    "typescript": "^6.0.3",
-    "yaml": "^2.9.0"
+    "typescript": "^6.0.3"
   },
   "publishConfig": {
     "access": "public",
