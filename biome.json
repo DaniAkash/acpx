@@ -175,6 +175,22 @@
           }
         }
       }
+    },
+    {
+      "includes": ["**/agent-mcp-manager/scripts/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          },
+          "nursery": {
+            "noExcessiveLinesPerFile": "off"
+          },
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
     }
   ],
   "assist": {

@@ -1,0 +1,329 @@
+system:
+  claude-desktop:
+    displayName: Claude Desktop
+    source: https://claude.ai/download
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/claude.svg
+    installCheckPaths:
+      - /Applications/Claude.app
+      - $AppData\Claude\
+    paths:
+      linux:
+        - $HOME/.config/claude/claude_desktop_config.json
+      darwin:
+        - $HOME/Library/Application Support/Claude/claude_desktop_config.json
+      windows:
+        - $APPDATA\Claude\claude_desktop_config.json
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON
+      del: del(.mcpServers[$NAME])
+  claude-code:
+    displayName: Claude Code
+    source: https://claude.ai/download
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/claude.svg
+    installCheckPaths:
+      - $HOME/.claude
+      - $USERPROFILE\.claude
+      - $CLAUDE_CONFIG_DIR
+    paths:
+      linux:
+        - $CLAUDE_CONFIG_DIR/.claude.json
+        - $HOME/.claude.json
+      darwin:
+        - $CLAUDE_CONFIG_DIR/.claude.json
+        - $HOME/.claude.json
+      windows:
+        - $CLAUDE_CONFIG_DIR\.claude.json
+        - $USERPROFILE\.claude.json
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON
+      del: del(.mcpServers[$NAME])
+  cline:
+    displayName: Cline
+    source: https://github.com/cline/cline
+    icon: https://raw.githubusercontent.com/cline/cline/main/assets/icons/icon.png
+    installCheckPaths:
+      - $HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev
+      - $HOME/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev
+      - $HOME/.config/Code/User/globalStorage/saoudrizwan.claude-dev
+      - $APPDATA\Code\User\globalStorage\saoudrizwan.claude-dev
+      - $APPDATA\Cursor\User\globalStorage\saoudrizwan.claude-dev
+    paths:
+      linux:
+        - $HOME/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json
+        - $HOME/.config/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json
+      darwin:
+        - $HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json
+        - $HOME/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json
+      windows:
+        - $APPDATA\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json
+        - $APPDATA\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON
+      del: del(.mcpServers[$NAME])
+  continue:
+    displayName: Continue.dev
+    source: https://www.continue.dev/
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/continue.svg
+    installCheckPaths:
+      - $HOME/.continue
+      - $USERPROFILE\.continue
+    paths:
+      linux:
+        - $HOME/.continue/config.yaml
+      darwin:
+        - $HOME/.continue/config.yaml
+      windows:
+        - $USERPROFILE\.continue\config.yaml
+    yq:
+      list: .mcpServers
+      set: .mcpServers = (.mcpServers // []) | .mcpServers += [{"name":$NAME}+$JSON]
+      del: del(.mcpServers[] | select(.name == $NAME))
+  cursor:
+    displayName: Cursor
+    source: https://www.cursor.com/
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/cursor.svg
+    installCheckPaths:
+      - /Applications/Cursor.app
+      - $AppData/Cursor/
+    paths:
+      linux:
+        - $HOME/.cursor/mcp.json
+      darwin:
+        - $HOME/.cursor/mcp.json
+      windows:
+        - $USERPROFILE\.cursor\mcp.json
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON
+      del: del(.mcpServers[$NAME])
+  vscode:
+    displayName: Visual Studio Code
+    source: https://code.visualstudio.com/
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/vscode.svg
+    installCheckPaths:
+      - /Applications/Visual Studio Code.app
+      - $APPDATA\Code\
+      - $HOME/.config/Code
+    paths:
+      linux:
+        - $HOME/.config/Code/User/mcp.json
+      darwin:
+        - $HOME/Library/Application Support/Code/User/mcp.json
+      windows:
+        - $APPDATA\Code\User\mcp.json
+    yq:
+      list: '.servers | to_entries | map(.value + {"name": .key})'
+      set: .servers[$NAME] = $JSON+{"type":"stdio"}
+      del: del(.servers[$NAME])
+  gemini:
+    displayName: Gemini CLI
+    source: https://github.com/google-gemini/gemini-cli
+    icon: https://avatars.githubusercontent.com/u/161781182?s=120&v=4
+    installCheckPaths:
+      - $HOME/.gemini
+      - $USERPROFILE\.gemini
+    paths:
+      linux:
+        - $HOME/.gemini/settings.json
+      darwin:
+        - $HOME/.gemini/settings.json
+      windows:
+        - $USERPROFILE\.gemini\settings.json
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON
+      del: del(.mcpServers[$NAME])
+  goose:
+    displayName: Goose
+    source: https://github.com/block/goose
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/goose.png
+    installCheckPaths:
+      - $HOME/.config/goose
+      - $USERPROFILE\.config\goose
+    paths:
+      linux:
+        - $HOME/.config/goose/config.yaml
+      darwin:
+        - $HOME/.config/goose/config.yaml
+      windows:
+        - $APPDATA\Block\goose\config\config.yaml
+    yq:
+      list: '.extensions | to_entries | map(select(.value.bundled != true)) | map(.value + {"name": .key})'
+      set: |
+        .extensions[$SIMPLE_NAME] = {
+          "args": $JSON.args,
+          "bundled": null,
+          "cmd": $JSON.command,
+          "description": "The Docker MCP Toolkit allows for easy configuration and consumption of MCP servers from the Docker MCP Catalog",
+          "enabled": true,
+          "env_keys": [],
+          "envs": {},
+          "name": $SIMPLE_NAME,
+          "timeout": 300,
+          "type": "stdio"
+        }
+      del: del(.extensions[$SIMPLE_NAME])
+  lmstudio:
+    displayName: LM Studio
+    source: https://lmstudio.ai/
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/lmstudio.png
+    installCheckPaths:
+      - $HOME/.lmstudio
+      - $HOME/.cache/lm-studio
+      - $USERPROFILE\.lmstudio
+      - $USERPROFILE\.cache\lm-studio
+    paths:
+      linux:
+        - $HOME/.cache/lm-studio/mcp.json
+        - $HOME/.lmstudio/mcp.json
+      darwin:
+        - $HOME/.cache/lm-studio/mcp.json
+        - $HOME/.lmstudio/mcp.json
+      windows:
+        - $USERPROFILE\.cache\lm-studio\mcp.json
+        - $USERPROFILE\.lmstudio\mcp.json
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON
+      del: del(.mcpServers[$NAME])
+  opencode:
+    displayName: OpenCode
+    source: https://opencode.ai/
+    icon: https://avatars.githubusercontent.com/u/66570915?s=48&v=4
+    installCheckPaths:
+      - $HOME/.config/opencode
+      - $USERPROFILE\.config\opencode
+    paths:
+      linux:
+        - $HOME/.config/opencode/opencode.json
+      darwin:
+        - $HOME/.config/opencode/opencode.json
+      windows:
+        - $USERPROFILE\.config\opencode\opencode.json
+    yq:
+      list: '.mcp | to_entries | map({"name": .key, "command": .value.command[0], "args": ((.value.command | .[1:]) // []), "type": "stdio"})'
+      set: |
+        .mcp[$NAME] = {
+          "type": "local",
+          "command": [$JSON.command]+$JSON.args,
+          "enabled": true
+        }
+      del: del(.mcp[$NAME])
+  sema4:
+    displayName: Sema4.ai Studio
+    source: https://sema4.ai/links/docker-mcp-download
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/sema4.png
+    installCheckPaths:
+      - $HOME/.sema4ai
+      - $USERPROFILE\AppData\Local\sema4ai
+    paths:
+      linux:
+        - $HOME/.sema4ai/sema4ai-studio/mcp_servers.json
+      darwin:
+        - $HOME/.sema4ai/sema4ai-studio/mcp_servers.json
+      windows:
+        - $USERPROFILE\AppData\Local\sema4ai\sema4ai-studio\mcp_servers.json
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON+{"transport":"stdio"}
+      del: del(.mcpServers[$NAME])
+  zed:
+    displayName: Zed
+    source: https://zed.dev/
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/zed.png
+    installCheckPaths:
+      - $HOME/.config/zed
+      - $USERPROFILE\.config\zed
+    paths:
+      linux:
+        - $HOME/.config/zed/settings.json
+      darwin:
+        - $HOME/.config/zed/settings.json
+      windows:
+        - $USERPROFILE\.config\zed\settings.json
+    yq:
+      list: '.context_servers | to_entries | map(.value + {"name": .key})'
+      set: .context_servers[$NAME] = {"source":"custom","enabled":true}+$JSON
+      del: del(.context_servers[$NAME])
+  kiro:
+    displayName: Kiro
+    source: https://kiro.dev/
+    icon: https://kiro.dev/icon.svg
+    installCheckPaths:
+      - $HOME/.kiro
+      - $USERPROFILE\.kiro
+    paths:
+      linux:
+        - $HOME/.kiro/settings/mcp.json
+      darwin:
+        - $HOME/.kiro/settings/mcp.json
+      windows:
+        - $USERPROFILE\.kiro\settings\mcp.json
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON
+      del: del(.mcpServers[$NAME])
+  crush:
+    displayName: Crush
+    source: https://github.com/charmbracelet/crush
+    icon: https://avatars.githubusercontent.com/u/57376114?s=48&v=4
+    installCheckPaths:
+      - $HOME/.config/crush
+      - $LOCALAPPDATA\crush
+    paths:
+      linux:
+        - $HOME/.config/crush/crush.json
+      darwin:
+        - $HOME/.config/crush/crush.json
+      windows:
+        - $LOCALAPPDATA\crush\crush.json
+    yq:
+      list: '.mcp | to_entries | map(.value + {"name": .key})'
+      set: .mcp[$NAME] = $JSON+{"type":"stdio"}
+      del: del(.mcp[$NAME])
+project:
+  cursor:
+    displayname: Cursor
+    projectfile: .cursor/mcp.json
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/cursor.svg
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON
+      del: del(.mcpServers[$NAME])
+  vscode:
+    displayname: Visual Studio Code
+    projectfile: .vscode/mcp.json
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/vscode.svg
+    yq:
+      list: '.servers | to_entries | map(.value + {"name": .key})'
+      set: .servers[$NAME] = $JSON+{"type":"stdio"}
+      del: del(.servers[$NAME])
+  claude-code:
+    displayname: Claude Code
+    projectfile: .mcp.json
+    icon: https://raw.githubusercontent.com/docker/mcp-gateway/main/img/client/claude.svg
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON+{"type":"stdio"}
+      del: del(.mcpServers[$NAME])
+  kiro:
+    displayName: Kiro
+    source: https://kiro.dev/
+    icon: https://kiro.dev/icon.svg
+    projectfile: .kiro/settings/mcp.json
+    yq:
+      list: '.mcpServers | to_entries | map(.value + {"name": .key})'
+      set: .mcpServers[$NAME] = $JSON
+      del: del(.mcpServers[$NAME])
+  crush:
+    displayname: Crush
+    projectfile: .crush.json
+    icon: https://avatars.githubusercontent.com/u/57376114?s=48&v=4
+    yq:
+      list: '.mcp | to_entries | map(.value + {"name": .key})'
+      set: .mcp[$NAME] = $JSON+{"type":"stdio"}
+      del: del(.mcp[$NAME])
+
