@@ -74,12 +74,6 @@ export interface AddServerOptions {
   spec: McpServerSpec
 }
 
-export interface AddServerResult {
-  name: string
-  /** False if a server with this name already existed and was replaced. */
-  created: boolean
-}
-
 export interface LinkServerOptions {
   serverName: string
   /** Single agent. For fan-out across many, call link() per agent. */

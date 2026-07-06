@@ -8,6 +8,7 @@ import {
   resolveAgentMcpConfigPath,
   resolveAgentSurface,
 } from './agents.ts'
+import type { AddServerResult } from './api.ts'
 import { getEmitter } from './emitters/index.ts'
 import {
   AgentNotSupportedError,
@@ -19,7 +20,6 @@ import {
 } from './errors.ts'
 import type {
   AddServerOptions,
-  AddServerResult,
   AgentId,
   AgentScope,
   InstalledServer,

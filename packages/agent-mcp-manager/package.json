@@ -1,7 +1,7 @@
 {
   "name": "agent-mcp-manager",
   "version": "0.0.3",
-  "description": "Programmatic add/link/unlink for MCP servers across AI coding agents (Claude Code, Claude Desktop, Cursor, VS Code, Codex, Gemini CLI, Zed). Manifest-driven primitives \u2014 library, not CLI.",
+  "description": "Programmatic add/link/unlink for MCP servers across AI coding agents (Claude Code, Claude Desktop, Cursor, VS Code, Codex, Gemini CLI, Zed). Manifest-driven primitives — library, not CLI.",
   "license": "MIT",
   "author": "Dani Akash",
   "homepage": "https://github.com/DaniAkash/agent-toolkit/tree/main/packages/agent-mcp-manager#readme",
@@ -33,6 +33,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./lowlevel": {
+      "types": "./dist/lowlevel.d.ts",
+      "import": "./dist/lowlevel.js"
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -50,7 +54,8 @@
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
-    "jsonc-parser": "^3.3.1"
+    "jsonc-parser": "^3.3.1",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "bunup": "^0.16.31",

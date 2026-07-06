@@ -4,9 +4,6 @@
   "workspaces": {
     "": {
       "name": "acpx-monorepo",
-      "dependencies": {
-        "yaml": "^2.9.0",
-      },
       "devDependencies": {
         "@biomejs/biome": "^2.4.14",
         "@types/bun": "^1.3.13",
@@ -94,6 +91,7 @@
       "dependencies": {
         "@iarna/toml": "^2.2.5",
         "jsonc-parser": "^3.3.1",
+        "yaml": "^2.9.0",
       },
       "devDependencies": {
         "bunup": "^0.16.31",

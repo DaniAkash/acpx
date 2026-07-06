@@ -1,19 +1,5 @@
 {
   "name": "acpx-monorepo",
-  "private": true,
-  "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
-  "scripts": {
-    "build": "bun run --filter '*' build",
-    "dev": "bun run --filter '*' dev",
-    "test": "bun test",
-    "typecheck": "bun run --filter '*' typecheck",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write --unsafe .",
-    "fallow": "fallow check"
-  },
   "devDependencies": {
     "@biomejs/biome": "^2.4.14",
     "@types/bun": "^1.3.13",
@@ -24,7 +10,18 @@
   "engines": {
     "bun": ">=1.3.0"
   },
-  "dependencies": {
-    "yaml": "^2.9.0"
-  }
+  "private": true,
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "dev": "bun run --filter '*' dev",
+    "test": "bun test",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write --unsafe .",
+    "fallow": "fallow check"
+  },
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ]
 }
