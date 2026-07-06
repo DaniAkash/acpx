@@ -1,5 +1,14 @@
-// Functional public API (v0.0.4+). See ./api.ts. The class API (createMcpManager)
-// is kept exported for one more commit; commit 9 deletes it.
+/**
+ * agent-mcp-manager public API (v0.0.4).
+ *
+ * The v0.0.3 class API (`createMcpManager`, `McpManager`) has been
+ * removed. Consumers migrate to the functional verbs exported here or
+ * to the low-level plan/apply primitives at
+ * `agent-mcp-manager/lowlevel` for dry-run control.
+ *
+ * See README.md's Migration section for a verb-by-verb translation
+ * table.
+ */
 
 export {
   detectInstalledAgents,
@@ -41,8 +50,7 @@ export {
   UnresolvedConfigPathError,
   UnsupportedTransportError,
 } from './errors.ts'
-export type { McpManager } from './manager.ts'
-export { createMcpManager } from './manager.ts'
+
 export type {
   DisconnectPlanSummary,
   LinkPlanSummary,
@@ -52,30 +60,17 @@ export type {
 } from './planner/types.ts'
 
 export type {
-  AddServerOptions,
   AgentId,
   AgentInfo,
   AgentScope,
-  InstalledServer,
-  LinkServerOptions,
-  LinkServerResult,
-  ListLinksOptions,
-  ListServersOptions,
   ManifestLinkEntry,
   ManifestServerEntry,
   McpHttpSpec,
-  McpManagerOptions,
-  McpServerLink,
   McpServerSpec,
   McpSseSpec,
   McpStdioSpec,
   McpTransport,
-  RemoveServerOptions,
-  RescanOptions,
-  RescanResult,
   ServerManifest,
-  UnlinkServerOptions,
-  UnlinkServerResult,
 } from './types.ts'
 
-export const VERSION = '0.0.0'
+export const VERSION = '0.0.4'
