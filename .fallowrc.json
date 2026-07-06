@@ -31,7 +31,7 @@
       }
     },
     {
-      "files": ["**/_catalog/**", "**/planner/**"],
+      "files": ["**/_catalog/**", "**/planner/**", "**/src/io/**"],
       "rules": {
         "unused-exports": "off",
         "unused-files": "off",
