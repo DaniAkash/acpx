@@ -1,11 +1,10 @@
-export type AgentId =
-  | 'claude-code'
-  | 'claude-desktop'
-  | 'cursor'
-  | 'vscode'
-  | 'gemini'
-  | 'codex'
-  | 'zed'
+// AgentId re-exports the 23-client union declared in the internal
+// catalog. Kept as a name alias for API surface continuity: consumers
+// import `AgentId` from the package root, the catalog's `ClientId`
+// stays internal.
+import type { ClientId } from './_catalog/types.ts'
+
+export type AgentId = ClientId
 
 export type AgentScope = 'system' | 'project'
 

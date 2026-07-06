@@ -75,7 +75,7 @@ export const claudeCode: ClientConfig = {
     project: ['stdio'],
   },
   stdio: { topLevelKey: 'mcpServers' },
-  http: { tagKey: 'type', tagValue: 'http', supportsOAuth: true },
+  http: { supportsOAuth: true },
   project: {
     stdio: { topLevelKey: 'mcpServers', tagKey: 'type', tagValue: 'stdio' },
   },
@@ -83,7 +83,7 @@ export const claudeCode: ClientConfig = {
     firstParty: 'https://docs.claude.com/en/docs/claude-code/mcp',
     smithery: SMITHERY_URL,
     notes:
-      'Project scope (.mcp.json) requires an explicit type: stdio tag. System scope (~/.claude.json) accepts all three transports.',
+      'Project scope (.mcp.json) requires an explicit type: stdio tag; ~/.claude.json accepts entries without a tag. System scope writes stdio and http both without a type tag (Claude Code parses both), matching the shape v0.0.3 shipped.',
     verified: VERIFIED,
   },
 }
@@ -224,7 +224,7 @@ export const codex: ClientConfig = {
   format: 'toml',
   supportedTransports: { system: ['stdio', 'http'] },
   stdio: { topLevelKey: 'mcp_servers' },
-  http: { tagKey: undefined, tagValue: undefined, supportsOAuth: true },
+  http: { headerField: 'http_headers', supportsOAuth: true },
   sources: {
     firstParty: 'https://developers.openai.com/codex/mcp',
     smithery: SMITHERY_URL,
@@ -254,8 +254,6 @@ export const zed: ClientConfig = {
     injects: { source: 'custom', enabled: true },
   },
   http: {
-    tagKey: undefined,
-    tagValue: undefined,
     injects: { source: 'custom', enabled: true },
     supportsOAuth: true,
   },
@@ -440,8 +438,6 @@ export const windsurf: ClientConfig = {
   stdio: { topLevelKey: 'mcpServers' },
   http: {
     urlField: 'serverUrl',
-    tagKey: undefined,
-    tagValue: undefined,
     supportsOAuth: true,
   },
   sources: {
@@ -679,8 +675,6 @@ export const antigravity: ClientConfig = {
   stdio: { topLevelKey: 'mcpServers' },
   http: {
     urlField: 'serverUrl',
-    tagKey: undefined,
-    tagValue: undefined,
     supportsOAuth: true,
   },
   sources: {
