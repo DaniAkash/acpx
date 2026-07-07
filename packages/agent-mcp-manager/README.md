@@ -33,40 +33,43 @@ bun add agent-mcp-manager
 ## Quick start
 
 ```ts
-import {
-  addServer,
-  link,
-  disconnect,
-  bind,
-} from 'agent-mcp-manager'
+import { link, disconnect, rescan, bind } from 'agent-mcp-manager'
 
 const workspaceDir = '~/.myapp/mcp'
 
-// 1. Register a server in the workspace manifest.
-await addServer(workspaceDir, {
+// The server is caller-owned data. No pre-registration step.
+const github = {
   name: 'github',
   spec: {
     transport: 'http',
     url: 'https://api.githubcopilot.com/mcp',
     headers: { Authorization: `Bearer ${process.env.GH_TOKEN}` },
   },
-})
+} as const
 
-// 2. Link the server into each agent's on-disk config.
-await link(workspaceDir, { serverName: 'github', agent: 'cursor' })
-await link(workspaceDir, { serverName: 'github', agent: 'claude-code' })
-await link(workspaceDir, { serverName: 'github', agent: 'vscode' })
+// One link call = one atomic operation:
+//   - upserts the manifest server entry
+//   - writes the entry to the agent's config file
+await link(workspaceDir, { server: github, agent: 'cursor' })
+await link(workspaceDir, { server: github, agent: 'claude-code' })
+await link(workspaceDir, { server: github, agent: 'vscode' })
 
-// 3. Later, disconnect one agent without affecting the others.
+// Later, disconnect one agent without touching the others.
 await disconnect(workspaceDir, {
   serverName: 'github',
   agent: 'cursor',
-  removeIfLast: true,   // drop the manifest entry only if no agents remain
+  removeIfLast: true, // drop the manifest entry only if no agents remain
 })
+
+// Periodically check that on-disk configs still match the manifest.
+const report = await rescan(workspaceDir)
+if (report.drifted.length > 0 || report.missing.length > 0) {
+  // ... report / auto-heal / prompt the user
+}
 
 // For consumers who use the same workspaceDir across many calls:
 const mgr = bind(workspaceDir)
-await mgr.link({ serverName: 'github', agent: 'gemini' })
+await mgr.link({ server: github, agent: 'gemini' })
 ```
 
 ## API reference
@@ -75,15 +78,32 @@ await mgr.link({ serverName: 'github', agent: 'gemini' })
 
 | Verb | Signature | Purpose |
 |---|---|---|
-| `addServer` | `(workspaceDir, {name, spec}) => Promise<{name, created}>` | Register a server spec in the workspace manifest. Idempotent (re-adds update the spec, preserve `addedAt` and links). Trims the name; the returned `name` reflects what was persisted. |
-| `link` | `(workspaceDir, {serverName, agent, scope?, projectRoot?, configPath?, allowOverwrite?}) => Promise<LinkPlanSummary>` | Write the server into one agent's config file and record the link in the manifest. |
+| `link` | `(workspaceDir, {server, agent, scope?, projectRoot?, configPath?, allowOverwrite?}) => Promise<LinkPlanSummary>` | Upsert the manifest server entry AND write the server into the agent's config file. Last-write-wins on the manifest spec. |
 | `unlink` | `(workspaceDir, {serverName, agent, scope?, projectRoot?, configPath?}) => Promise<UnlinkPlanSummary>` | Remove one agent's entry from its config file and drop the manifest link. No-op when the manifest has no such link. |
 | `disconnect` | `(workspaceDir, {serverName, agent, scope?, projectRoot?, removeIfLast?}) => Promise<DisconnectPlanSummary>` | Unlink one agent AND drop the manifest entry when no other agents remain linked to it. Never touches other agents' config files. **The primitive that closes [issue #63](https://github.com/DaniAkash/agent-toolkit/issues/63).** |
 | `remove` | `(workspaceDir, {serverName, unlinkFirst?}) => Promise<RemovePlanSummary>` | Drop the manifest entry AND unlink every currently-linked agent's config file. |
 | `list` | `(workspaceDir) => Promise<ManifestServerEntry[]>` | Every server in the manifest. |
 | `listLinks` | `(workspaceDir, {serverNames?, agents?}?) => Promise<ListedLink[]>` | Every (server, agent, configPath) triple in the manifest. Filter by server name or agent. |
-| `rescan` | `(workspaceDir, {agents?}?) => Promise<RescanReport>` | Diff manifest links against disk. Reports verified / drifted / missing entries. |
+| `rescan` | `(workspaceDir, {agents?}?) => Promise<RescanReport>` | Diff manifest links against disk. Reports verified / drifted / missing entries. **See [rescan section](#rescan-detecting-drift-between-manifest-and-disk) below.** |
 | `bind` | `(workspaceDir) => BoundApi` | Sugar for calling all verbs with the same workspaceDir. Stateless: every method still runs `readState -> plan -> applyPlan`. |
+
+### The server value
+
+Every mutating call takes an `McpServer` value:
+
+```ts
+interface McpServer {
+  name: string          // manifest key + entry name in the agent's config file
+  spec: McpServerSpec   // how the server is invoked (stdio | sse | http)
+}
+
+type McpServerSpec =
+  | { transport: 'stdio'; command: string; args?: string[]; env?: Record<string, string> }
+  | { transport: 'sse';   url: string; headers?: Record<string, string> }
+  | { transport: 'http';  url: string; headers?: Record<string, string> }
+```
+
+The `name` is trimmed before being used as the manifest key. `link({server: {name: '  gh  ', ...}})` persists under `'gh'`.
 
 ### Errors
 
@@ -92,11 +112,12 @@ Every error extends `McpManagerError`. `instanceof` checks are safe across modul
 | Error | Thrown by | Meaning |
 |---|---|---|
 | `AgentNotSupportedError` | any verb | Agent id not in the catalog. |
-| `ServerNotFoundError` | `link` | Server name not in the manifest (add it first). |
 | `ForeignEntryError` | `link` | On-disk entry under the target name was not put there by the manifest. Pass `allowOverwrite: true` to take ownership. |
 | `UnsupportedTransportError` | `link` | Transport not accepted by this agent at this scope. Details include the accepted set and a per-agent hint. |
-| `InvalidServerSpecError` | `addServer` | Spec is missing required fields (empty command, empty url, unknown transport). |
+| `InvalidServerSpecError` | `link` | Server has an empty name, or the spec is missing required fields (empty command, empty url, unknown transport). |
 | `UnresolvedConfigPathError` | any verb that needs the on-disk path | Cannot resolve the agent's config file on this OS (e.g., project scope requested without `projectRoot`, env vars unset). |
+
+Note: v0.0.3's `ServerNotFoundError` no longer applies to `link`, since the server is passed in on every call.
 
 ### Return summaries
 
@@ -107,7 +128,7 @@ interface LinkPlanSummary {
   serverName: string
   agent: AgentId
   scope: AgentScope
-  created: boolean           // true if no prior link existed; false if we replaced one
+  created: boolean           // true if no prior link existed for this agent; false if we replaced one
   overwroteForeign: boolean  // true if allowOverwrite: true replaced an unmanaged entry
 }
 
@@ -133,6 +154,75 @@ interface RemovePlanSummary {
 }
 ```
 
+## `rescan`: detecting drift between manifest and disk
+
+The library maintains its own workspace manifest (`<workspaceDir>/manifest.json`) that records every server you've linked and which agent's config file received it. `rescan` compares that manifest against what's actually on disk and returns a report:
+
+```ts
+interface RescanReport {
+  verified: ReadonlyArray<{ serverName: string; agent: AgentId; configPath: string }>
+  drifted:  ReadonlyArray<{ serverName: string; agent: AgentId; scope: AgentScope; configPath: string; reason: string }>
+  missing:  ReadonlyArray<{ serverName: string; agent: AgentId; scope: AgentScope; configPath: string; reason: string }>
+}
+```
+
+### When to call it
+
+`rescan` is your source of truth whenever the on-disk state may have drifted from what the library last wrote. Common triggers:
+
+- **After a user edits the config file directly.** Someone opens `~/.cursor/mcp.json` in a text editor and deletes an entry. The manifest still thinks it's there.
+- **After you change a spec.** `link({server: A})` then `link({server: A_prime, agent: 'gemini'})` where the name is the same but the spec differs. The manifest holds the newest spec; `A`'s previous linkers (cursor, vscode, ...) still have the old spec on disk. `rescan` won't report drift on presence, but see the note below on how to interpret it.
+- **On app startup.** UI shells that display "which servers are linked to which agents" should call `rescan` on load, not trust the manifest alone.
+- **Before batching writes.** If you're about to `link` a large batch, `rescan` first to detect any pre-existing drift you should surface to the user rather than silently overwriting.
+
+### What each bucket means
+
+- **`verified`**: manifest says agent X has server Y linked to `configPath` Z, AND that file exists AND the emitter finds a matching entry inside it. Everything is aligned.
+- **`drifted`**: manifest recorded a link, the file exists, but the emitter can't find an entry under that name. Someone (user, another tool, a partial write) removed the entry from disk. The manifest still remembers the link.
+- **`missing`**: the config file itself is gone (either the file doesn't exist on disk, or you didn't include the agent in the readState call). The link record survives.
+
+### Common patterns
+
+**Detect drift and prompt to re-link.** The most common consumer flow:
+
+```ts
+const report = await rescan(workspaceDir)
+for (const drift of report.drifted) {
+  console.log(`${drift.agent}'s ${drift.configPath} is missing '${drift.serverName}'`)
+  // Ask the user; on confirm, re-link using the current spec stored in the manifest.
+  const servers = await list(workspaceDir)
+  const server = servers.find((s) => s.name === drift.serverName)
+  if (server) {
+    await link(workspaceDir, {
+      server: { name: server.name, spec: server.spec },
+      agent: drift.agent,
+    })
+  }
+}
+```
+
+**Filter by agent.** If you only care about drift for the agents you actively support, pass a filter:
+
+```ts
+await rescan(workspaceDir, { agents: ['cursor', 'vscode'] })
+```
+
+**Report-only in CI.** `rescan` performs zero writes and returns a plain data value. It's safe to run in a CI check that verifies your dev workspace hasn't drifted:
+
+```ts
+const { drifted, missing } = await rescan(workspaceDir)
+if (drifted.length + missing.length > 0) {
+  console.error('MCP config drift detected:', { drifted, missing })
+  process.exit(1)
+}
+```
+
+### What `rescan` does NOT do
+
+- It does not detect **spec drift** (an entry exists on disk but was written with a different command/url than the manifest's current spec). The current implementation only checks for entry presence. Spec-drift detection is a v0.0.5 candidate; today, you can compare `list(workspaceDir)[i].spec` against a parse of the config file yourself if you need it.
+- It does not scan for **unmanaged entries** (entries on disk that the manifest never wrote). v0.0.3 exposed this via `RescanResult.unmanaged`; v0.0.4 does not. This is also a v0.0.5 candidate.
+- It does not touch disk. `rescan` is read-only and returns a value; the caller decides what to do about it.
+
 ## Migration from v0.0.3
 
 If you're on v0.0.3 with `createMcpManager`, you have three paths:
@@ -148,6 +238,7 @@ The v0.0.3 `createMcpManager()` returned an object with a private `manifest` ref
 Under v0.0.4:
 
 - **No mutable in-memory manifest.** Every verb reads the manifest from disk at call time, computes a plan, applies it.
+- **No pre-registration step.** The v0.0.3 flow was `add(name, spec)` then `link(name, agent)`. That two-step surface let the two calls drift out of sync, allowed manifest ghosts, and made concurrent adds silently clobber each other. v0.0.4 collapses this into one `link({server, agent})` call. The server is caller-owned data.
 - **Every operation composes.** `readState → plan* → applyPlan`. You can inspect the plan before writing.
 - **`disconnect()` is one primitive.** It reads state, unlinks one agent, drops the manifest entry only if no other agents remain linked. Never touches other agents' config files. The #63 bug is structurally impossible.
 - **The workspace manifest schema on disk is unchanged.** If you have a `manifest.json` written by v0.0.3, v0.0.4 reads it without migration.
@@ -157,17 +248,18 @@ Under v0.0.4:
 | v0.0.3 (class API) | v0.0.4 (functional API) |
 |---|---|
 | `const mgr = createMcpManager({ workspaceDir })` | `const mgr = bind(workspaceDir)` (optional; the raw verbs also work) |
-| `await mgr.add({ name, spec })` | `await addServer(workspaceDir, { name, spec })` |
-| `await mgr.link({ serverName, agent })` | `await link(workspaceDir, { serverName, agent })` |
-| `await mgr.link({ serverName, agent, configPath })` | `await link(workspaceDir, { serverName, agent, configPath })` |
-| `await mgr.link({ serverName, agent, allowOverwrite: true })` | `await link(workspaceDir, { serverName, agent, allowOverwrite: true })` |
+| `await mgr.add({ name, spec })`<br>`await mgr.link({ serverName: name, agent })` | `const server = { name, spec }`<br>`await link(workspaceDir, { server, agent })` |
+| `await mgr.link({ serverName, agent, configPath })` | `await link(workspaceDir, { server, agent, configPath })` |
+| `await mgr.link({ serverName, agent, allowOverwrite: true })` | `await link(workspaceDir, { server, agent, allowOverwrite: true })` |
 | `await mgr.unlink({ serverName, agent })` | `await unlink(workspaceDir, { serverName, agent })` |
 | `await mgr.remove({ serverName })` | `await remove(workspaceDir, { serverName })` |
 | `await mgr.remove({ serverName, unlinkFirst: false })` | `await remove(workspaceDir, { serverName, unlinkFirst: false })` |
 | `await mgr.listServers()` | `await list(workspaceDir)` |
 | `await mgr.listLinks()` | `await listLinks(workspaceDir)` |
 | `await mgr.listLinks({ agents, serverNames })` | `await listLinks(workspaceDir, { agents, serverNames })` |
-| `await mgr.rescan()` | `await rescan(workspaceDir)` |
+| `await mgr.rescan()` | `await rescan(workspaceDir)` (see the [rescan section](#rescan-detecting-drift-between-manifest-and-disk) for report changes) |
+
+**No more `addServer`.** v0.0.3 required two calls to link a server for the first time: `mgr.add(...)` then `mgr.link(...)`. v0.0.4 does both in one `link({server, ...})`. Just build the server value inline and hand it to `link`. If you'd been storing the result of `mgr.add()` to reuse in later `mgr.link` calls, replace that with a caller-owned `const server = {name, spec}` variable.
 
 ### The disconnect pattern (the #63 fix)
 
@@ -208,17 +300,11 @@ v0.0.3 accepted per-manager configuration through `McpManagerOptions`. Those kno
 
 Rationale: v0.0.3's per-manager `agentConfigPaths` map applied to every method call, which made mixed-scope operations awkward. v0.0.4's per-call `configPath` is one field with the same effect and no hidden state.
 
-### `listServers` return shape
+### Return shape diffs
 
-v0.0.3 `mgr.listServers()` returned `InstalledServer[]`. v0.0.4 `list(workspaceDir)` returns `ManifestServerEntry[]`. The two are the same shape (`{name, spec, addedAt, links}`) with a different type name; existing consumer code that reads `.name`, `.spec`, `.addedAt`, `.links` needs no change.
-
-### `listLinks` return shape
-
-v0.0.3 `mgr.listLinks()` returned `McpServerLink[]` with fields `serverName`, `agent`, `configPath`, and optional `drifted` / `broken` / `unmanaged` flags. v0.0.4 `listLinks(workspaceDir)` returns `ListedLink[]` with fields `serverName`, `agent`, `configPath`. The drift flags moved to a dedicated verb: call `rescan(workspaceDir)` for a `{verified, drifted, missing}` report.
-
-### `rescan` return shape
-
-v0.0.3 `RescanResult` had four buckets: `verified`, `drifted`, `broken`, `unmanaged`. v0.0.4 `RescanReport` has three: `verified`, `drifted`, `missing`. The v0.0.3 `broken` bucket is now folded into `missing` (a manifest link with no on-disk entry). v0.0.3's `unmanaged` bucket (on-disk entries with no manifest record) is not currently scanned by `rescan`; that's a v0.0.5 candidate.
+- **`listServers` → `list`**. v0.0.3 returned `InstalledServer[]`; v0.0.4 `list(workspaceDir)` returns `ManifestServerEntry[]`. Same fields (`{name, spec, addedAt, links}`), different type name. Existing consumer code that reads `.name`, `.spec`, `.addedAt`, `.links` needs no change.
+- **`listLinks`**. v0.0.3 returned `McpServerLink[]` with optional `drifted` / `broken` / `unmanaged` flags. v0.0.4 `listLinks(workspaceDir)` returns `ListedLink[]` with just `{serverName, agent, configPath}`. Drift flags moved to `rescan()`, which now returns a dedicated `{verified, drifted, missing}` report.
+- **`rescan`**. v0.0.3 `RescanResult` had four buckets: `verified` / `drifted` / `broken` / `unmanaged`. v0.0.4 `RescanReport` has three: `verified` / `drifted` / `missing`. The v0.0.3 `broken` bucket is now folded into `missing` (a manifest link with no on-disk entry). v0.0.3's `unmanaged` bucket (on-disk entries with no manifest record) is not currently scanned; that's a v0.0.5 candidate.
 
 ### New capabilities in v0.0.4
 
@@ -230,7 +316,9 @@ Available today; no equivalent in v0.0.3:
 
 ### Known behavioral differences
 
-- **Trimmed names.** `addServer({ name: '  gh  ' })` persists the trimmed key `'gh'` and returns `{ name: 'gh', created }`. v0.0.3 persisted the untrimmed value, which produced entries that later verbs couldn't reference by the trimmed name.
+- **One-step link.** v0.0.3 required `mgr.add()` before `mgr.link()`. v0.0.4 `link({server, agent})` does both. The manifest server entry is upserted as a side-effect of the link.
+- **Last-write-wins on the manifest spec.** If you call `link({server: A, agent: 'cursor'})` and later `link({server: A', agent: 'gemini'})` where `A.name === A'.name` but the specs differ, the manifest's spec updates to `A'`. Cursor's config still holds `A` on disk (stale) until you re-link cursor. Use `rescan()` to detect this class of drift.
+- **Trimmed names.** `link({server: {name: '  gh  ', ...}})` persists the trimmed key `'gh'`. v0.0.3 persisted the untrimmed value.
 - **Idempotent re-links skip the config write.** `link()` no longer touches mtime when the resulting content is identical. IDE file-watchers (Cursor, VS Code) no longer reload on idempotent re-runs.
 - **`exists: true` for empty files.** `readState` from `/lowlevel` returns `AgentFileState.exists = true` for existing empty files; v0.0.3 conflated existence with non-emptiness.
 - **`unlink` uses the manifest-recorded configPath.** If you `link({ configPath: X })` in v0.0.3 and later `unlink()` without a `configPath`, v0.0.3 rewrote the OS-default path (potentially skipping the file that had the entry). v0.0.4 looks up the recorded path from the manifest first.
@@ -243,17 +331,17 @@ v0.0.3 exported the `McpManager` interface for consumers to store the manager in
 // Option A: store the workspaceDir, call the free functions on demand.
 class MyApp {
   private workspaceDir = '~/.myapp/mcp'
-  async link(serverName: string, agent: AgentId) {
-    await link(this.workspaceDir, { serverName, agent })
+  async link(server: McpServer, agent: AgentId) {
+    await link(this.workspaceDir, { server, agent })
   }
 }
 
 // Option B: store a BoundApi.
-import { bind, type BoundApi } from 'agent-mcp-manager'
+import { bind, type BoundApi, type McpServer, type AgentId } from 'agent-mcp-manager'
 class MyApp {
   private mcp: BoundApi = bind('~/.myapp/mcp')
-  async link(serverName: string, agent: AgentId) {
-    await this.mcp.link({ serverName, agent })
+  async link(server: McpServer, agent: AgentId) {
+    await this.mcp.link({ server, agent })
   }
 }
 ```
@@ -275,7 +363,11 @@ import {
 const state = await readState(workspaceDir, ['cursor', 'gemini'])
 
 // Compute both plans against the SAME state snapshot.
-const linkPlan = planLink(state, { serverName: 'gh', agent: 'cursor' }, new Date().toISOString())
+const linkPlan = planLink(
+  state,
+  { server: { name: 'gh', spec: { transport: 'stdio', command: 'gh-mcp' } }, agent: 'cursor' },
+  new Date().toISOString(),
+)
 const disconnectPlan = planDisconnect(state, { serverName: 'old', agent: 'gemini' })
 
 // Inspect before writing.
@@ -341,6 +433,7 @@ Everything you need is at the package root or under `agent-mcp-manager/lowlevel`
 
 ```ts
 import type {
+  McpServer,              // { name, spec }
   McpServerSpec,          // stdio | sse | http
   McpStdioSpec,
   McpHttpSpec,
@@ -350,7 +443,6 @@ import type {
   ServerManifest,         // on-disk schema
   ManifestServerEntry,
   ManifestLinkEntry,
-  AddServerResult,
   LinkPlanSummary,
   UnlinkPlanSummary,
   DisconnectPlanSummary,
