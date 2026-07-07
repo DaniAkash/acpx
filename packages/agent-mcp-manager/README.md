@@ -85,6 +85,7 @@ await mgr.link({ server: github, agent: 'gemini' })
 | `list` | `(workspaceDir) => Promise<ManifestServerEntry[]>` | Every server in the manifest. |
 | `listLinks` | `(workspaceDir, {serverNames?, agents?}?) => Promise<ListedLink[]>` | Every (server, agent, configPath) triple in the manifest. Filter by server name or agent. |
 | `rescan` | `(workspaceDir, {agents?}?) => Promise<RescanReport>` | Diff manifest links against disk. Reports verified / drifted / missing entries. **See [rescan section](#rescan-detecting-drift-between-manifest-and-disk) below.** |
+| `isInstalled` | `({agents, scope?, projectRoot?}) => Promise<Partial<Record<AgentId, boolean>>>` | Batch check whether each agent's config location is writable-safely (file exists OR parent directory exists). Predicts what `link()` would throw. **See [isInstalled section](#isinstalled-checking-agent-availability) below.** |
 | `bind` | `(workspaceDir) => BoundApi` | Sugar for calling all verbs with the same workspaceDir. Stateless: every method still runs `readState -> plan -> applyPlan`. |
 
 ### The server value
@@ -116,6 +117,7 @@ Every error extends `McpManagerError`. `instanceof` checks are safe across modul
 | `UnsupportedTransportError` | `link` | Transport not accepted by this agent at this scope. Details include the accepted set and a per-agent hint. |
 | `InvalidServerSpecError` | `link` | Server has an empty name, or the spec is missing required fields (empty command, empty url, unknown transport). |
 | `UnresolvedConfigPathError` | any verb that needs the on-disk path | Cannot resolve the agent's config file on this OS (e.g., project scope requested without `projectRoot`, env vars unset). |
+| `AgentNotInstalledError` | `link` | Neither the agent's config file nor its parent directory exists on disk. The agent has either not been installed or has been installed but never launched. Fields: `.agent`, `.configPath`, `.parentDir`. Precheck with `isInstalled({agents})` to avoid the throw. |
 
 Note: v0.0.3's `ServerNotFoundError` no longer applies to `link`, since the server is passed in on every call.
 
@@ -223,6 +225,92 @@ if (drifted.length + missing.length > 0) {
 - It does not scan for **unmanaged entries** (entries on disk that the manifest never wrote). v0.0.3 exposed this via `RescanResult.unmanaged`; v0.0.4 does not. This is also a v0.0.5 candidate.
 - It does not touch disk. `rescan` is read-only and returns a value; the caller decides what to do about it.
 
+## `isInstalled`: checking agent availability
+
+Before you call `link()`, you probably want to know whether the target agent is actually installed on the user's machine. `isInstalled` answers that in one batch call:
+
+```ts
+import { isInstalled } from 'agent-mcp-manager'
+
+const installed = await isInstalled({
+  agents: ['cursor', 'claude-code', 'gemini', 'vscode'],
+})
+
+if (installed.cursor) {
+  await link(workspaceDir, { server, agent: 'cursor' })
+}
+```
+
+Return shape: `Partial<Record<AgentId, boolean>>`. Only the agents you asked about appear as keys. Duplicates in the input array collapse.
+
+### What "installed" means here
+
+An agent is installed iff **its config file already exists OR the parent directory of that config file exists.** For Cursor that's `~/.cursor/mcp.json` or `~/.cursor/`. For Claude Desktop it's `~/Library/Application Support/Claude/claude_desktop_config.json` or `~/Library/Application Support/Claude/`. If neither exists, the agent either hasn't been installed or has been installed but never launched. Either way, the library can't safely write to it.
+
+This is the same signal `link()` uses to gate `AgentNotInstalledError`. So `isInstalled` is exactly the precheck for `link`: if `installed[agent] === false`, `link({server, agent})` will throw.
+
+### When to call it
+
+- **Gating a UI dropdown**: show only installed agents in a "Choose an agent" list.
+- **Filtering a batch before linking**: skip missing agents instead of catching per-call throws.
+- **Background health check**: on app startup, warn the user if agents they had linked previously are no longer available.
+- **Predicting failures**: any time you want to avoid catching `AgentNotInstalledError` in flow control.
+
+### Worked patterns
+
+**Show only installed agents in a UI dropdown.**
+
+```ts
+const supported = listSupportedAgents()
+const installed = await isInstalled({ agents: supported })
+const shown = supported.filter((a) => installed[a] === true)
+// Render `shown` in your UI.
+```
+
+**Precheck a batch before linking.**
+
+```ts
+const targets = ['cursor', 'claude-code', 'gemini']
+const installed = await isInstalled({ agents: targets })
+for (const agent of targets) {
+  if (installed[agent]) {
+    await link(workspaceDir, { server, agent })
+  } else {
+    showWarning(`${agent} is not installed; skipping.`)
+  }
+}
+```
+
+**Predict what `link` will throw.** Because both use the same signal:
+
+```ts
+const installed = await isInstalled({ agents: ['cursor'] })
+// installed.cursor === false  =>  link({server, agent: 'cursor'}) will throw AgentNotInstalledError.
+```
+
+### `isInstalled` vs `detectInstalledAgents`
+
+`detectInstalledAgents` (already in v0.0.3) returns `AgentInfo[]` with an `installed` flag based on the catalog's `installCheckPaths` (app bundle locations like `/Applications/Cursor.app`). It answers "is the app on disk?" That's a different question from "can the library write MCP config here?"
+
+- Use `isInstalled` when you're about to write config or need to precheck `link`. Same signal as the gate.
+- Use `detectInstalledAgents` when you want to know whether the app bundle exists, without necessarily knowing whether the user has launched it. Useful for "we found Cursor in /Applications but you haven't launched it yet; do that first" UX flows.
+
+Both signals will drift apart in cases like unlaunched fresh installs. Pick the one that matches your question.
+
+### `AgentNotInstalledError`
+
+The typed error `link()` throws when the install gate fails. Fields:
+
+```ts
+class AgentNotInstalledError extends McpManagerError {
+  agent: AgentId
+  configPath: string  // the exact path we checked
+  parentDir: string   // its parent, also missing
+}
+```
+
+Handle it around your `link()` call, or use `isInstalled` beforehand to avoid the throw entirely.
+
 ## Migration from v0.0.3
 
 If you're on v0.0.3 with `createMcpManager`, you have three paths:
@@ -312,6 +400,7 @@ Available today; no equivalent in v0.0.3:
 
 - **Dry-run.** Import from `agent-mcp-manager/lowlevel` and call `planLink` / `planDisconnect` / etc. without applying. Inspect `plan.ops` (the exact file writes) and `plan.nextManifest` (the manifest snapshot) before deciding to apply. Example under "Dry-run and batching" below.
 - **Batching.** Run multiple planner calls against a single `State` snapshot, concatenate the `ops`, and apply them all in one pass with `applyPlan`.
+- **Install-status detection.** `isInstalled({agents})` batch-checks whether each agent is available on the current machine, and `link()` throws `AgentNotInstalledError` (instead of silently creating a ghost config) when the target isn't installed. See the [isInstalled section](#isinstalled-checking-agent-availability).
 - **16 additional clients.** `cline`, `opencode`, `goose`, `kiro`, `windsurf`, `witsy`, `roocode`, `enconvo`, `boltai`, `amazon-bedrock`, `amazonq`, `tome`, `librechat`, `antigravity`, `trae`, `vscode-insiders`.
 
 ### Known behavioral differences
@@ -426,6 +515,7 @@ On disk:
 - **Foreign-entry protection.** `link` throws `ForeignEntryError` when an on-disk entry under the target name was not put there by the manifest. Pass `allowOverwrite: true` to take ownership.
 - **Structural protection against orphaning.** `disconnect` computes its ops from the manifest's links map. Under this shape, disconnecting one agent from a server that four others share never touches the four others' config files. The v0.0.3 class API had a bug (issue #63) where `remove` blew away shared manifest entries. That bug is structurally impossible under the FP API.
 - **Idempotent writes.** Re-linking a server that's already correctly present skips the file write entirely. Editors watching the config file do not reload.
+- **Install-status gate.** `link()` refuses to create a ghost config directory for an agent whose config path is under a non-existent parent. The typed `AgentNotInstalledError` carries the agent id, the config path we checked, and the parent directory so consumers can surface an actionable prompt.
 
 ## Types
 
@@ -448,8 +538,12 @@ import type {
   DisconnectPlanSummary,
   RemovePlanSummary,
   RescanReport,
+  IsInstalledInput,
+  IsInstalledResult,      // Partial<Record<AgentId, boolean>>
   BoundApi,
 } from 'agent-mcp-manager'
+
+import { AgentNotInstalledError } from 'agent-mcp-manager'  // thrown by link()
 
 import type {
   State, Plan, FsOp,
