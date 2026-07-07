@@ -1,6 +1,6 @@
 {
   "name": "agent-mcp-manager",
-  "version": "0.0.4",
+  "version": "0.0.4-rc.1",
   "description": "Programmatic add/link/unlink for MCP servers across 23 AI coding agents (Claude Code, Claude Desktop, Cursor, VS Code, Codex, Gemini CLI, Zed, Cline, OpenCode, Goose, Kiro, Windsurf, and more). Functional API with dry-run support.",
   "license": "MIT",
   "author": "Dani Akash",

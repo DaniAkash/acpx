@@ -73,4 +73,4 @@ export type {
   ServerManifest,
 } from './types.ts'
 
-export const VERSION = '0.0.4'
+export const VERSION = '0.0.4-rc.1'
