@@ -13,7 +13,6 @@
 
 import { applyPlan, readState } from './io/index.ts'
 import {
-  planAdd,
   planDisconnect,
   planLink,
   planRemove,
@@ -31,34 +30,20 @@ import type {
   AgentId,
   AgentScope,
   ManifestServerEntry,
-  McpServerSpec,
+  McpServer,
 } from './types.ts'
 
 function nowIso(): string {
   return new Date().toISOString()
 }
 
-export interface AddServerResult {
-  name: string
-  created: boolean
-}
-
-export async function addServer(
-  workspaceDir: string,
-  input: { name: string; spec: McpServerSpec },
-): Promise<AddServerResult> {
-  const state = await readState(workspaceDir)
-  const plan = planAdd(state, input, nowIso())
-  await applyPlan(plan)
-  // Return the trimmed name planAdd actually persisted to the manifest,
-  // not the raw input. Downstream calls (link/unlink/disconnect/remove)
-  // resolve servers by their manifest name, so callers get the exact
-  // string they should pass to those verbs.
-  return { name: plan.name, created: plan.created }
-}
-
 export interface LinkInputAPI {
-  serverName: string
+  /**
+   * The server value to link. `name` becomes the manifest key; `spec`
+   * is written to the agent's config file and stored on the manifest
+   * server entry (last-write-wins across links).
+   */
+  server: McpServer
   agent: AgentId
   scope?: AgentScope
   projectRoot?: string
@@ -260,10 +245,6 @@ export async function rescan(
 // -------------------------------------------------------------------
 
 export interface BoundApi {
-  addServer(input: {
-    name: string
-    spec: McpServerSpec
-  }): Promise<AddServerResult>
   link(input: LinkInputAPI): Promise<LinkPlanSummary>
   unlink(input: UnlinkInputAPI): Promise<UnlinkPlanSummary>
   disconnect(input: DisconnectInputAPI): Promise<DisconnectPlanSummary>
@@ -275,7 +256,6 @@ export interface BoundApi {
 
 export function bind(workspaceDir: string): BoundApi {
   return {
-    addServer: (input) => addServer(workspaceDir, input),
     link: (input) => link(workspaceDir, input),
     unlink: (input) => unlink(workspaceDir, input),
     disconnect: (input) => disconnect(workspaceDir, input),

@@ -2,11 +2,10 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   ForeignEntryError,
-  ServerNotFoundError,
+  InvalidServerSpecError,
   UnsupportedTransportError,
 } from '../../src/errors.ts'
 import {
-  planAdd,
   planDisconnect,
   planLink,
   planRemove,
@@ -17,6 +16,7 @@ import type { State } from '../../src/planner/types.ts'
 import type {
   AgentId,
   ManifestServerEntry,
+  McpServer,
   McpServerSpec,
   ServerManifest,
 } from '../../src/types.ts'
@@ -33,6 +33,9 @@ const HTTP_SPEC: McpServerSpec = {
   transport: 'http',
   url: 'https://example.com/mcp',
 }
+
+const GH: McpServer = { name: 'gh', spec: STDIO_SPEC }
+const GH_HTTP: McpServer = { name: 'gh', spec: HTTP_SPEC }
 
 function emptyManifest(): ServerManifest {
   return { version: 1, servers: {} }
@@ -80,129 +83,141 @@ function agentFile(
 }
 
 // -------------------------------------------------------------------
-// planAdd
+// planLink — the primary write verb. Upserts manifest AND writes config.
 // -------------------------------------------------------------------
 
-describe('planAdd', () => {
-  test('creates a new server entry and one manifest write op', () => {
-    const state = baseState()
-    const plan = planAdd(state, { name: 'gh', spec: STDIO_SPEC }, NOW)
+describe('planLink', () => {
+  test('first link creates a manifest server entry and writes agent config', () => {
+    const state = baseState({
+      agents: [agentFile('cursor', '/tmp/ws/cursor.json')],
+    })
+    const plan = planLink(state, { server: GH, agent: 'cursor' }, NOW)
     expect(plan.created).toBe(true)
-    expect(plan.nextManifest.servers.gh?.name).toBe('gh')
+    expect(plan.overwroteForeign).toBe(false)
     expect(plan.nextManifest.servers.gh?.spec).toEqual(STDIO_SPEC)
-    expect(plan.nextManifest.servers.gh?.links).toEqual({})
-    expect(plan.ops).toHaveLength(1)
-    expect(plan.ops[0]?.kind).toBe('writeFile')
-  })
-
-  test('replacing an existing server preserves addedAt and links', () => {
-    const state = stateWithServer(
-      serverEntry({
-        addedAt: '2020-01-01T00:00:00Z',
-        links: { cursor: { configPath: '/x', createdAt: NOW } },
-      }),
+    expect(plan.nextManifest.servers.gh?.links.cursor?.configPath).toBe(
+      '/tmp/ws/cursor.json',
     )
-    const plan = planAdd(state, { name: 'gh', spec: HTTP_SPEC }, NOW)
-    expect(plan.created).toBe(false)
-    expect(plan.nextManifest.servers.gh?.spec).toEqual(HTTP_SPEC)
-    expect(plan.nextManifest.servers.gh?.addedAt).toBe('2020-01-01T00:00:00Z')
-    expect(plan.nextManifest.servers.gh?.links.cursor).toBeDefined()
+    expect(plan.ops).toHaveLength(2)
   })
 
-  test('rejects empty name', () => {
+  test('rejects an empty server name', () => {
+    const state = baseState({
+      agents: [agentFile('cursor', '/tmp/ws/cursor.json')],
+    })
     expect(() =>
-      planAdd(baseState(), { name: '  ', spec: STDIO_SPEC }, NOW),
-    ).toThrow()
+      planLink(
+        state,
+        { server: { name: '  ', spec: STDIO_SPEC }, agent: 'cursor' },
+        NOW,
+      ),
+    ).toThrow(InvalidServerSpecError)
   })
 
-  test('trims the name before using it as the manifest key', () => {
-    // Regression: an untrimmed name would create an entry that
-    // subsequent link/unlink/disconnect calls could never find because
-    // they'd look up the trimmed key.
-    const plan = planAdd(baseState(), { name: '  gh  ', spec: STDIO_SPEC }, NOW)
-    expect(plan.name).toBe('gh')
+  test('rejects a stdio spec with an empty command', () => {
+    const state = baseState({
+      agents: [agentFile('cursor', '/tmp/ws/cursor.json')],
+    })
+    expect(() =>
+      planLink(
+        state,
+        {
+          server: { name: 'x', spec: { transport: 'stdio', command: '' } },
+          agent: 'cursor',
+        },
+        NOW,
+      ),
+    ).toThrow(InvalidServerSpecError)
+  })
+
+  test('trims the server name before using it as the manifest key', () => {
+    const state = baseState({
+      agents: [agentFile('cursor', '/tmp/ws/cursor.json')],
+    })
+    const plan = planLink(
+      state,
+      { server: { name: '  gh  ', spec: STDIO_SPEC }, agent: 'cursor' },
+      NOW,
+    )
+    expect(plan.serverName).toBe('gh')
     expect(plan.nextManifest.servers.gh).toBeDefined()
     expect(plan.nextManifest.servers['  gh  ']).toBeUndefined()
   })
 
-  test('rejects stdio spec with empty command', () => {
-    expect(() =>
-      planAdd(
-        baseState(),
-        { name: 'x', spec: { transport: 'stdio', command: '' } },
-        NOW,
-      ),
-    ).toThrow()
-  })
-
-  test('rejects http spec with empty url', () => {
-    expect(() =>
-      planAdd(
-        baseState(),
-        { name: 'x', spec: { transport: 'http', url: '' } },
-        NOW,
-      ),
-    ).toThrow()
-  })
-})
-
-// -------------------------------------------------------------------
-// planLink
-// -------------------------------------------------------------------
-
-describe('planLink', () => {
-  test('links a server to an agent, adding to config file and manifest', () => {
-    const state = stateWithServer(serverEntry(), {
-      agents: [agentFile('cursor', '/tmp/ws/cursor.json')],
-    })
-    const plan = planLink(state, { serverName: 'gh', agent: 'cursor' }, NOW)
-    expect(plan.created).toBe(true)
-    expect(plan.overwroteForeign).toBe(false)
-    expect(plan.ops).toHaveLength(2)
-    expect(plan.nextManifest.servers.gh?.links.cursor?.configPath).toBe(
-      '/tmp/ws/cursor.json',
+  test('re-linking the same server + agent returns created: false and preserves addedAt', () => {
+    const state = stateWithServer(
+      serverEntry({
+        addedAt: '2020-01-01T00:00:00Z',
+        links: {
+          cursor: { configPath: '/tmp/ws/cursor.json', createdAt: NOW },
+        },
+      }),
+      {
+        agents: [
+          agentFile(
+            'cursor',
+            '/tmp/ws/cursor.json',
+            JSON.stringify({ mcpServers: { gh: { command: 'gh-mcp' } } }),
+          ),
+        ],
+      },
     )
+    const plan = planLink(state, { server: GH, agent: 'cursor' }, NOW)
+    expect(plan.created).toBe(false)
+    expect(plan.nextManifest.servers.gh?.addedAt).toBe('2020-01-01T00:00:00Z')
   })
 
-  test('throws ServerNotFoundError for unknown server', () => {
-    expect(() =>
-      planLink(baseState(), { serverName: 'ghost', agent: 'cursor' }, NOW),
-    ).toThrow(ServerNotFoundError)
+  test('upserts manifest spec when the same name is linked with a different spec', () => {
+    const state = stateWithServer(
+      serverEntry({
+        links: {
+          cursor: { configPath: '/tmp/ws/cursor.json', createdAt: NOW },
+        },
+      }),
+      {
+        agents: [agentFile('gemini', '/tmp/ws/gemini.json', '')],
+      },
+    )
+    const plan = planLink(state, { server: GH_HTTP, agent: 'gemini' }, NOW)
+    // Manifest reflects the newer spec.
+    expect(plan.nextManifest.servers.gh?.spec).toEqual(HTTP_SPEC)
+    // Existing cursor link is preserved.
+    expect(plan.nextManifest.servers.gh?.links.cursor).toBeDefined()
+    // New gemini link is added.
+    expect(plan.nextManifest.servers.gh?.links.gemini).toBeDefined()
   })
 
   test('throws UnsupportedTransportError when transport not accepted', () => {
-    const state = stateWithServer(serverEntry({ spec: HTTP_SPEC }), {
+    const state = baseState({
       agents: [agentFile('claude-desktop', '/tmp/ws/claude.json')],
     })
     expect(() =>
-      planLink(state, { serverName: 'gh', agent: 'claude-desktop' }, NOW),
+      planLink(state, { server: GH_HTTP, agent: 'claude-desktop' }, NOW),
     ).toThrow(UnsupportedTransportError)
   })
 
-  test('throws ForeignEntryError when config already has the entry', () => {
-    // Cursor's mcp.json already has an entry named `gh` that manifest
-    // didn't put there.
+  test('throws ForeignEntryError when config already has an unmanaged entry under this name', () => {
     const foreignJson = JSON.stringify({
       mcpServers: { gh: { command: 'other-thing' } },
     })
-    const state = stateWithServer(serverEntry(), {
+    const state = baseState({
       agents: [agentFile('cursor', '/tmp/ws/cursor.json', foreignJson)],
     })
-    expect(() =>
-      planLink(state, { serverName: 'gh', agent: 'cursor' }, NOW),
-    ).toThrow(ForeignEntryError)
+    expect(() => planLink(state, { server: GH, agent: 'cursor' }, NOW)).toThrow(
+      ForeignEntryError,
+    )
   })
 
-  test('allowOverwrite: true takes ownership of the foreign entry', () => {
+  test('allowOverwrite: true takes ownership of a foreign entry', () => {
     const foreignJson = JSON.stringify({
       mcpServers: { gh: { command: 'other-thing' } },
     })
-    const state = stateWithServer(serverEntry(), {
+    const state = baseState({
       agents: [agentFile('cursor', '/tmp/ws/cursor.json', foreignJson)],
     })
     const plan = planLink(
       state,
-      { serverName: 'gh', agent: 'cursor', allowOverwrite: true },
+      { server: GH, agent: 'cursor', allowOverwrite: true },
       NOW,
     )
     expect(plan.overwroteForeign).toBe(true)
@@ -210,20 +225,15 @@ describe('planLink', () => {
   })
 
   test('re-linking with identical content skips the agent-config write op', () => {
-    // Regression: planLink previously wrote the agent config on every
-    // call, even when the resulting content was identical. That churned
-    // mtime and could trigger IDE file-watch reloads.
-    const state = stateWithServer(serverEntry(), {
+    const state = baseState({
       agents: [agentFile('cursor', '/tmp/ws/cursor.json')],
     })
-    const first = planLink(state, { serverName: 'gh', agent: 'cursor' }, NOW)
+    const first = planLink(state, { server: GH, agent: 'cursor' }, NOW)
     const configWriteOp = first.ops.find(
       (op) => op.kind === 'writeFile' && op.path === '/tmp/ws/cursor.json',
     )
     expect(configWriteOp).toBeDefined()
 
-    // Re-plan against the state as it would be after applying the first
-    // plan: agent file now has the entry, manifest has the link.
     const nextRaw =
       configWriteOp?.kind === 'writeFile' ? configWriteOp.content : ''
     const afterState = stateWithServer(
@@ -234,13 +244,7 @@ describe('planLink', () => {
       }),
       { agents: [agentFile('cursor', '/tmp/ws/cursor.json', nextRaw)] },
     )
-    const second = planLink(
-      afterState,
-      { serverName: 'gh', agent: 'cursor' },
-      NOW,
-    )
-    // Only the manifest write op remains; the agent-config write is
-    // skipped because content is unchanged.
+    const second = planLink(afterState, { server: GH, agent: 'cursor' }, NOW)
     const secondConfigWrites = second.ops.filter(
       (op) => op.kind === 'writeFile' && op.path === '/tmp/ws/cursor.json',
     )
@@ -311,9 +315,6 @@ describe('planDisconnect (closes #63)', () => {
   })
 
   test('DOES NOT drop the manifest entry when other agents remain linked', () => {
-    // This is the exact #63 scenario. Disconnecting Cursor from a
-    // server that Claude Code, VS Code, and Gemini also have registered
-    // must leave those three agents completely untouched.
     const state = stateWithServer(
       serverEntry({
         links: {
@@ -330,7 +331,6 @@ describe('planDisconnect (closes #63)', () => {
             '/tmp/ws/cursor.json',
             JSON.stringify({ mcpServers: { gh: { command: 'gh-mcp' } } }),
           ),
-          // The other three agents' files are read but not modified.
           agentFile(
             'claude-code',
             '/tmp/ws/claude.json',
@@ -354,7 +354,6 @@ describe('planDisconnect (closes #63)', () => {
     const plan = planDisconnect(state, { serverName: 'gh', agent: 'cursor' })
     expect(plan.unlinked).toBe(true)
     expect(plan.removedManifest).toBe(false)
-    // Manifest still has the entry; three links remain.
     const remainingEntry = plan.nextManifest.servers.gh
     expect(remainingEntry).toBeDefined()
     expect(Object.keys(remainingEntry?.links ?? {}).sort()).toEqual([
@@ -362,7 +361,6 @@ describe('planDisconnect (closes #63)', () => {
       'gemini',
       'vscode',
     ])
-    // Ops touch only Cursor's file and the manifest.
     const writePaths = plan.ops
       .filter((op) => op.kind === 'writeFile')
       .map((op) => (op.kind === 'writeFile' ? op.path : ''))
@@ -576,11 +574,11 @@ describe('planRescan', () => {
 
 describe('planner invariants', () => {
   test('a plan is a value; calling twice on the same state returns equivalent ops', () => {
-    const state = stateWithServer(serverEntry(), {
+    const state = baseState({
       agents: [agentFile('cursor', '/tmp/ws/cursor.json')],
     })
-    const a = planLink(state, { serverName: 'gh', agent: 'cursor' }, NOW)
-    const b = planLink(state, { serverName: 'gh', agent: 'cursor' }, NOW)
+    const a = planLink(state, { server: GH, agent: 'cursor' }, NOW)
+    const b = planLink(state, { server: GH, agent: 'cursor' }, NOW)
     expect(a.ops).toEqual(b.ops)
     expect(a.nextManifest).toEqual(b.nextManifest)
   })
@@ -590,8 +588,7 @@ describe('planner invariants', () => {
       agents: [agentFile('cursor', '/tmp/ws/cursor.json')],
     })
     const before = JSON.stringify(state.manifest)
-    planLink(state, { serverName: 'gh', agent: 'cursor' }, NOW)
-    planAdd(state, { name: 'gh', spec: HTTP_SPEC }, NOW)
+    planLink(state, { server: GH, agent: 'cursor' }, NOW)
     expect(JSON.stringify(state.manifest)).toBe(before)
   })
 })

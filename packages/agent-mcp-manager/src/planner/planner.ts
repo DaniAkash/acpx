@@ -18,7 +18,6 @@ import {
   AgentNotSupportedError,
   ForeignEntryError,
   InvalidServerSpecError,
-  ServerNotFoundError,
   UnsupportedTransportError,
 } from '../errors.ts'
 import type {
@@ -29,7 +28,6 @@ import type {
   ServerManifest,
 } from '../types.ts'
 import type {
-  AddServerInput,
   AgentFileState,
   DisconnectInput,
   DisconnectPlanSummary,
@@ -47,37 +45,9 @@ import type {
 } from './types.ts'
 
 // -------------------------------------------------------------------
-// planAdd: add a server to the manifest with no agent link
-// -------------------------------------------------------------------
-
-export function planAdd(
-  state: State,
-  input: AddServerInput,
-  now: string,
-): Plan & { name: string; created: boolean } {
-  const name = input.name.trim()
-  if (!name) {
-    throw new InvalidServerSpecError('server name is required')
-  }
-  validateSpec(input.spec)
-  const existing = state.manifest.servers[name]
-  const nextEntry: ManifestServerEntry = {
-    name,
-    spec: input.spec,
-    addedAt: existing?.addedAt ?? now,
-    links: existing?.links ?? {},
-  }
-  const nextManifest = putServer(state.manifest, nextEntry)
-  return {
-    ops: [manifestWriteOp(state, nextManifest)],
-    nextManifest,
-    name,
-    created: !existing,
-  }
-}
-
-// -------------------------------------------------------------------
-// planLink
+// planLink: upsert the manifest server entry from `server.spec` and
+// record a link for the given agent. This is the ONLY way a server
+// enters the manifest; there is no separate "register" step.
 // -------------------------------------------------------------------
 
 export function planLink(
@@ -86,39 +56,42 @@ export function planLink(
   now: string,
 ): Plan & LinkPlanSummary {
   const scope = input.scope ?? 'system'
-  const server = requireServer(state, input.serverName)
-  ensureTransportSupported(input.agent, scope, server.spec.transport)
+  const name = input.server.name.trim()
+  if (!name) {
+    throw new InvalidServerSpecError('server name is required')
+  }
+  validateSpec(input.server.spec)
+  ensureTransportSupported(input.agent, scope, input.server.spec.transport)
   const agentFile = requireAgentFile(state, input.agent, scope)
   const client = getCatalogEntry(input.agent)
   const emitter = getEmitter(client, scope)
 
+  const existing = state.manifest.servers[name]
   const existingKeys = emitter.read(agentFile.rawContent)
-  const isKnownToManifest = Boolean(server.links[input.agent])
-  const isForeign =
-    existingKeys.includes(input.serverName) && !isKnownToManifest
+  const isKnownToManifest = Boolean(existing?.links[input.agent])
+  const isForeign = existingKeys.includes(name) && !isKnownToManifest
   if (isForeign && !input.allowOverwrite) {
-    throw new ForeignEntryError(
-      input.serverName,
-      input.agent,
-      agentFile.configPath,
-    )
+    throw new ForeignEntryError(name, input.agent, agentFile.configPath)
   }
 
-  const nextRaw = emitter.add(
-    agentFile.rawContent,
-    input.serverName,
-    server.spec,
-  )
-  const nextManifest = putServer(state.manifest, {
-    ...server,
+  const nextRaw = emitter.add(agentFile.rawContent, name, input.server.spec)
+  const nextEntry: ManifestServerEntry = {
+    name,
+    // Last-write-wins on the spec: consumers who need to keep multiple
+    // agents in sync should re-link them after mutating the spec, or
+    // use rescan() to detect drift where one agent's file no longer
+    // matches the manifest.
+    spec: input.server.spec,
+    addedAt: existing?.addedAt ?? now,
     links: {
-      ...server.links,
+      ...existing?.links,
       [input.agent]: {
         configPath: agentFile.configPath,
-        createdAt: server.links[input.agent]?.createdAt ?? now,
+        createdAt: existing?.links[input.agent]?.createdAt ?? now,
       },
     },
-  })
+  }
+  const nextManifest = putServer(state.manifest, nextEntry)
 
   // Guard the agent-config write on actual content change so idempotent
   // re-links do not touch mtime. IDE file watchers (Cursor, VS Code)
@@ -133,7 +106,7 @@ export function planLink(
   return {
     ops,
     nextManifest,
-    serverName: input.serverName,
+    serverName: name,
     agent: input.agent,
     scope,
     created: !isKnownToManifest,
@@ -455,12 +428,6 @@ function ensureTransportSupported(
       hint: `Emit a ${list[0] ?? 'stdio'} spec for this agent or pick a different agent.`,
     })
   }
-}
-
-function requireServer(state: State, name: string): ManifestServerEntry {
-  const server = state.manifest.servers[name]
-  if (!server) throw new ServerNotFoundError(name)
-  return server
 }
 
 function requireAgentFile(

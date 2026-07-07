@@ -40,6 +40,17 @@ export interface McpHttpSpec {
 
 export type McpServerSpec = McpStdioSpec | McpSseSpec | McpHttpSpec
 
+/**
+ * The unit of work every mutating verb takes. Caller-owned data:
+ * `name` is the manifest key; `spec` describes how the server is
+ * invoked. Passed to `link()` directly; the library never persists
+ * a server independently of a link.
+ */
+export interface McpServer {
+  name: string
+  spec: McpServerSpec
+}
+
 export interface ServerManifest {
   version: 1
   servers: Record<string, ManifestServerEntry>

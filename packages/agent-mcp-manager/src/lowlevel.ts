@@ -15,7 +15,6 @@
 export type { ApplyPlanResult, ReadStateOptions } from './io/index.ts'
 export { applyPlan, readState } from './io/index.ts'
 export {
-  planAdd,
   planDisconnect,
   planLink,
   planRemove,
@@ -23,7 +22,6 @@ export {
   planUnlink,
 } from './planner/planner.ts'
 export type {
-  AddServerInput,
   AgentFileState,
   DisconnectInput,
   DisconnectPlanSummary,

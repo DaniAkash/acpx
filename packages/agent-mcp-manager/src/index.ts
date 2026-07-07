@@ -19,7 +19,6 @@ export {
   resolveAgentSurface,
 } from './agents.ts'
 export type {
-  AddServerResult,
   BoundApi,
   DisconnectInputAPI,
   LinkInputAPI,
@@ -30,7 +29,6 @@ export type {
   UnlinkInputAPI,
 } from './api.ts'
 export {
-  addServer,
   bind,
   disconnect,
   link,
@@ -66,6 +64,7 @@ export type {
   ManifestLinkEntry,
   ManifestServerEntry,
   McpHttpSpec,
+  McpServer,
   McpServerSpec,
   McpSseSpec,
   McpStdioSpec,
@@ -73,4 +72,4 @@ export type {
   ServerManifest,
 } from './types.ts'
 
-export const VERSION = '0.0.4-rc.1'
+export const VERSION = '0.0.4-rc.2'

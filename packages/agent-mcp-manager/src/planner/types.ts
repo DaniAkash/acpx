@@ -17,7 +17,7 @@
 import type {
   AgentId,
   AgentScope,
-  McpServerSpec,
+  McpServer,
   ServerManifest,
 } from '../types.ts'
 
@@ -67,13 +67,15 @@ export interface Plan {
 // Planner inputs and per-verb return shapes
 // -------------------------------------------------------------------
 
-export interface AddServerInput {
-  name: string
-  spec: McpServerSpec
-}
-
 export interface LinkInput {
-  serverName: string
+  /**
+   * Caller-owned server value. `link()` upserts the manifest server
+   * entry from `server.spec` (last-write-wins) and adds a link record
+   * for the given agent. There is no separate "register a server"
+   * step; a server exists in the manifest iff at least one link has
+   * been recorded for it.
+   */
+  server: McpServer
   agent: AgentId
   scope?: AgentScope
   /** Bypass the foreign-entry safety check. Default false. */

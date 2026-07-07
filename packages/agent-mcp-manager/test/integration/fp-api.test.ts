@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
-  addServer,
   bind,
   disconnect,
   link,
@@ -14,11 +13,27 @@ import {
   unlink,
 } from '../../src/api.ts'
 import { readState } from '../../src/io/index.ts'
+import type { McpServer } from '../../src/types.ts'
 
 let workspaceDir: string
 let cursorPath: string
 let geminiPath: string
 let claudeCodePath: string
+
+const GH_STDIO: McpServer = {
+  name: 'gh',
+  spec: { transport: 'stdio', command: 'gh-mcp' },
+}
+
+const GH_HTTP: McpServer = {
+  name: 'gh',
+  spec: { transport: 'http', url: 'https://api.example.com/mcp' },
+}
+
+const SOLO: McpServer = {
+  name: 'solo',
+  spec: { transport: 'stdio', command: 'solo-mcp' },
+}
 
 beforeEach(async () => {
   workspaceDir = await mkdtemp(join(tmpdir(), 'acpx-api-'))
@@ -31,85 +46,85 @@ afterEach(async () => {
   await rm(workspaceDir, { recursive: true, force: true })
 })
 
-describe('addServer', () => {
-  test('creates a server entry and writes the manifest', async () => {
-    const res = await addServer(workspaceDir, {
-      name: 'gh',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
-    })
-    expect(res).toEqual({ name: 'gh', created: true })
-    const state = await readState(workspaceDir)
-    expect(state.manifest.servers.gh?.spec).toEqual({
-      transport: 'stdio',
-      command: 'gh-mcp',
-    })
-  })
-
-  test('re-adding the same name returns created: false and updates the spec', async () => {
-    await addServer(workspaceDir, {
-      name: 'gh',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
-    })
-    const res = await addServer(workspaceDir, {
-      name: 'gh',
-      spec: { transport: 'http', url: 'https://x/mcp' },
-    })
-    expect(res.created).toBe(false)
-    const state = await readState(workspaceDir)
-    expect(state.manifest.servers.gh?.spec).toEqual({
-      transport: 'http',
-      url: 'https://x/mcp',
-    })
-  })
-
-  test('returns the trimmed name in the response (matches what was persisted)', async () => {
-    // Regression: response `name` used to echo `input.name` verbatim
-    // even when planAdd trimmed the persisted key.
-    const res = await addServer(workspaceDir, {
-      name: '  gh  ',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
-    })
-    expect(res.name).toBe('gh')
-    const state = await readState(workspaceDir)
-    expect(state.manifest.servers.gh).toBeDefined()
-  })
-})
-
-describe('link', () => {
-  test('writes the agent config and updates the manifest', async () => {
-    await addServer(workspaceDir, {
-      name: 'gh',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
-    })
+describe('link (upserts manifest + writes agent config)', () => {
+  test('first link creates the manifest server entry AND writes the agent config', async () => {
     const res = await link(workspaceDir, {
-      serverName: 'gh',
+      server: GH_STDIO,
       agent: 'cursor',
       configPath: cursorPath,
     })
     expect(res.created).toBe(true)
+    expect(res.overwroteForeign).toBe(false)
+
     const raw = await readFile(cursorPath, 'utf8')
     expect(JSON.parse(raw).mcpServers.gh.command).toBe('gh-mcp')
-  })
-})
 
-describe('disconnect (regression test for #63)', () => {
-  test('disconnecting one of four linked agents does NOT touch the other three', async () => {
-    await addServer(workspaceDir, {
-      name: 'gh',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
-    })
+    const state = await readState(workspaceDir)
+    expect(state.manifest.servers.gh?.spec).toEqual(GH_STDIO.spec)
+    expect(state.manifest.servers.gh?.links.cursor?.configPath).toBe(cursorPath)
+  })
+
+  test('re-linking the same server + agent with identical spec returns created: false', async () => {
     await link(workspaceDir, {
-      serverName: 'gh',
+      server: GH_STDIO,
+      agent: 'cursor',
+      configPath: cursorPath,
+    })
+    const res = await link(workspaceDir, {
+      server: GH_STDIO,
+      agent: 'cursor',
+      configPath: cursorPath,
+    })
+    expect(res.created).toBe(false)
+  })
+
+  test('linking the same name with a different spec upserts the manifest (last-write-wins)', async () => {
+    await link(workspaceDir, {
+      server: GH_STDIO,
       agent: 'cursor',
       configPath: cursorPath,
     })
     await link(workspaceDir, {
-      serverName: 'gh',
+      server: GH_HTTP,
+      agent: 'gemini',
+      configPath: geminiPath,
+    })
+    const state = await readState(workspaceDir)
+    // Manifest reflects the LATER spec.
+    expect(state.manifest.servers.gh?.spec).toEqual(GH_HTTP.spec)
+    // But cursor's file still has the earlier spec on disk; rescan
+    // will report drift for cursor.
+    const cursorRaw = await readFile(cursorPath, 'utf8')
+    expect(JSON.parse(cursorRaw).mcpServers.gh.command).toBe('gh-mcp')
+  })
+
+  test('trims the server name before using it as the manifest key', async () => {
+    // Regression: matches the trim behavior the removed addServer had.
+    await link(workspaceDir, {
+      server: { name: '  gh  ', spec: GH_STDIO.spec },
+      agent: 'cursor',
+      configPath: cursorPath,
+    })
+    const state = await readState(workspaceDir)
+    expect(state.manifest.servers.gh).toBeDefined()
+    expect(state.manifest.servers['  gh  ']).toBeUndefined()
+  })
+})
+
+describe('disconnect (regression test for #63)', () => {
+  test('disconnecting one of three linked agents does NOT touch the other two', async () => {
+    await link(workspaceDir, {
+      server: GH_STDIO,
+      agent: 'cursor',
+      configPath: cursorPath,
+    })
+    await link(workspaceDir, {
+      server: GH_STDIO,
       agent: 'gemini',
       configPath: geminiPath,
     })
     await link(workspaceDir, {
-      serverName: 'gh',
+      server: GH_STDIO,
       agent: 'claude-code',
       configPath: claudeCodePath,
     })
@@ -124,18 +139,14 @@ describe('disconnect (regression test for #63)', () => {
       agent: 'cursor',
     })
     expect(res.unlinked).toBe(true)
-    // Two agents still linked: manifest entry stays.
     expect(res.removedManifest).toBe(false)
 
-    // Cursor's file loses the entry.
     const cursorAfter = await readFile(cursorPath, 'utf8')
     expect(JSON.parse(cursorAfter).mcpServers.gh).toBeUndefined()
 
-    // The other two agents' files are byte-for-byte untouched.
     expect(await readFile(geminiPath, 'utf8')).toBe(before.gemini)
     expect(await readFile(claudeCodePath, 'utf8')).toBe(before.claudeCode)
 
-    // Manifest still has the entry with the two remaining links.
     const state = await readState(workspaceDir)
     expect(state.manifest.servers.gh).toBeDefined()
     expect(Object.keys(state.manifest.servers.gh?.links ?? {}).sort()).toEqual([
@@ -145,12 +156,8 @@ describe('disconnect (regression test for #63)', () => {
   })
 
   test('disconnecting the last agent drops the manifest entry by default', async () => {
-    await addServer(workspaceDir, {
-      name: 'solo',
-      spec: { transport: 'stdio', command: 'solo-mcp' },
-    })
     await link(workspaceDir, {
-      serverName: 'solo',
+      server: SOLO,
       agent: 'cursor',
       configPath: cursorPath,
     })
@@ -166,30 +173,22 @@ describe('disconnect (regression test for #63)', () => {
 
 describe('unlink + list + listLinks + remove', () => {
   test('unlink is idempotent when the link does not exist', async () => {
-    await addServer(workspaceDir, {
-      name: 'gh',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
+    await link(workspaceDir, {
+      server: GH_STDIO,
+      agent: 'cursor',
+      configPath: cursorPath,
     })
     const res = await unlink(workspaceDir, {
       serverName: 'gh',
-      agent: 'cursor',
-      configPath: cursorPath,
+      agent: 'gemini',
+      configPath: geminiPath,
     })
     expect(res.removed).toBe(false)
   })
 
   test('unlink without an explicit configPath uses the manifest-recorded path', async () => {
-    // Regression: unlink used to skip the manifest link lookup that
-    // disconnect and remove already do. Without it, a caller who did
-    // `link({configPath: X})` and later `unlink()` (no configPath)
-    // dropped the manifest link but never rewrote file X, leaving an
-    // orphan on-disk entry.
-    await addServer(workspaceDir, {
-      name: 'gh',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
-    })
     await link(workspaceDir, {
-      serverName: 'gh',
+      server: GH_STDIO,
       agent: 'cursor',
       configPath: cursorPath,
     })
@@ -203,30 +202,28 @@ describe('unlink + list + listLinks + remove', () => {
   })
 
   test('list returns every manifest server entry', async () => {
-    await addServer(workspaceDir, {
-      name: 'a',
-      spec: { transport: 'stdio', command: 'a' },
+    await link(workspaceDir, {
+      server: { name: 'a', spec: { transport: 'stdio', command: 'a' } },
+      agent: 'cursor',
+      configPath: cursorPath,
     })
-    await addServer(workspaceDir, {
-      name: 'b',
-      spec: { transport: 'http', url: 'https://b' },
+    await link(workspaceDir, {
+      server: { name: 'b', spec: { transport: 'http', url: 'https://b/mcp' } },
+      agent: 'cursor',
+      configPath: cursorPath,
     })
     const items = await list(workspaceDir)
     expect(items.map((s) => s.name).sort()).toEqual(['a', 'b'])
   })
 
   test('listLinks reports every (server, agent, configPath) triple', async () => {
-    await addServer(workspaceDir, {
-      name: 'gh',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
-    })
     await link(workspaceDir, {
-      serverName: 'gh',
+      server: GH_STDIO,
       agent: 'cursor',
       configPath: cursorPath,
     })
     await link(workspaceDir, {
-      serverName: 'gh',
+      server: GH_STDIO,
       agent: 'gemini',
       configPath: geminiPath,
     })
@@ -235,24 +232,19 @@ describe('unlink + list + listLinks + remove', () => {
   })
 
   test('remove drops the manifest entry and unlinks every currently-linked agent', async () => {
-    await addServer(workspaceDir, {
-      name: 'gh',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
-    })
     await link(workspaceDir, {
-      serverName: 'gh',
+      server: GH_STDIO,
       agent: 'cursor',
       configPath: cursorPath,
     })
     await link(workspaceDir, {
-      serverName: 'gh',
+      server: GH_STDIO,
       agent: 'gemini',
       configPath: geminiPath,
     })
     const res = await remove(workspaceDir, { serverName: 'gh' })
     expect(res.removedManifest).toBe(true)
     expect(res.unlinkedAgents.sort()).toEqual(['cursor', 'gemini'])
-    // Both files should have the entry dropped.
     expect(
       JSON.parse(await readFile(cursorPath, 'utf8')).mcpServers.gh,
     ).toBeUndefined()
@@ -265,12 +257,8 @@ describe('unlink + list + listLinks + remove', () => {
 describe('bind', () => {
   test('applies the workspaceDir to every verb', async () => {
     const mgr = bind(workspaceDir)
-    await mgr.addServer({
-      name: 'gh',
-      spec: { transport: 'stdio', command: 'gh-mcp' },
-    })
     await mgr.link({
-      serverName: 'gh',
+      server: GH_STDIO,
       agent: 'cursor',
       configPath: cursorPath,
     })
