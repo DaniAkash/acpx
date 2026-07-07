@@ -3,12 +3,13 @@
  * the boundary and every output is a Plan value the caller can inspect
  * before applying.
  *
- * These functions do NOT throw for "user made a mistake" cases (empty
- * server name, transport not supported by the client, foreign entry
- * on disk); they throw only for invariant violations that indicate a
- * caller bug. Domain errors surface as thrown errors from the API
- * layer, which composes readState -> plan* -> applyPlan and enriches
- * exceptions with paths from state.
+ * Planners throw the typed error hierarchy for domain-level input
+ * problems (`InvalidServerSpecError` for a bad spec, `ServerNotFound
+ * Error` for an unknown server, `UnsupportedTransportError` when the
+ * client does not accept the requested transport, `ForeignEntryError`
+ * when an on-disk entry was not manifest-managed). Callers catch these
+ * to surface actionable messages; the errors carry the offending name,
+ * agent, and path when relevant.
  */
 
 import { getCatalogEntry } from '../agents.ts'
@@ -53,14 +54,15 @@ export function planAdd(
   state: State,
   input: AddServerInput,
   now: string,
-): Plan & { created: boolean } {
-  if (!input.name.trim()) {
+): Plan & { name: string; created: boolean } {
+  const name = input.name.trim()
+  if (!name) {
     throw new InvalidServerSpecError('server name is required')
   }
   validateSpec(input.spec)
-  const existing = state.manifest.servers[input.name]
+  const existing = state.manifest.servers[name]
   const nextEntry: ManifestServerEntry = {
-    name: input.name,
+    name,
     spec: input.spec,
     addedAt: existing?.addedAt ?? now,
     links: existing?.links ?? {},
@@ -69,6 +71,7 @@ export function planAdd(
   return {
     ops: [manifestWriteOp(state, nextManifest)],
     nextManifest,
+    name,
     created: !existing,
   }
 }
@@ -117,11 +120,18 @@ export function planLink(
     },
   })
 
+  // Guard the agent-config write on actual content change so idempotent
+  // re-links do not touch mtime. IDE file watchers (Cursor, VS Code)
+  // treat every rewrite as a reload trigger; unnecessary rewrites cause
+  // visible UI flicker for consumers batching many links.
+  const ops: FsOp[] = []
+  if (nextRaw !== agentFile.rawContent) {
+    ops.push(writeOp(agentFile.configPath, nextRaw))
+  }
+  ops.push(manifestWriteOp(state, nextManifest))
+
   return {
-    ops: [
-      writeOp(agentFile.configPath, nextRaw),
-      manifestWriteOp(state, nextManifest),
-    ],
+    ops,
     nextManifest,
     serverName: input.serverName,
     agent: input.agent,
@@ -291,10 +301,16 @@ export function planRemove(
       // can find by configPath. If the caller didn't include this agent
       // in readState, we skip the file write (the manifest still gets
       // its unlink record dropped).
-      const scope: AgentScope =
-        link.configPath === deriveProjectPath(link.configPath)
-          ? 'project'
-          : 'system'
+      //
+      // Scope inference: v0.0.4's ManifestLinkEntry does not record
+      // scope. Default to 'system' because it's the common case AND
+      // because for every 23-client catalog entry that ships project
+      // overrides, the project stdio shape uses the same topLevelKey
+      // as system, so emitter.remove finds and removes the entry
+      // identically at either scope. If a future client's project
+      // topLevelKey diverges, ManifestLinkEntry needs a scope field
+      // and this line becomes real inference.
+      const scope: AgentScope = 'system'
       const agentFile = findAgentFile(
         { ...state, manifest: cursor },
         agent as AgentId,
@@ -504,12 +520,4 @@ function writeOp(path: string, content: string): FsOp {
 
 function manifestWriteOp(state: State, manifest: ServerManifest): FsOp {
   return writeOp(state.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-}
-
-// Best-effort project-scope detection. Actual scope classification is
-// done by the API layer that constructed State; this heuristic is only
-// used inside planRemove when the manifest link record does not carry a
-// scope tag (link records were written in v0.0.3 without scope metadata).
-function deriveProjectPath(configPath: string): string {
-  return configPath
 }

@@ -61,6 +61,18 @@ describe('addServer', () => {
       url: 'https://x/mcp',
     })
   })
+
+  test('returns the trimmed name in the response (matches what was persisted)', async () => {
+    // Regression: response `name` used to echo `input.name` verbatim
+    // even when planAdd trimmed the persisted key.
+    const res = await addServer(workspaceDir, {
+      name: '  gh  ',
+      spec: { transport: 'stdio', command: 'gh-mcp' },
+    })
+    expect(res.name).toBe('gh')
+    const state = await readState(workspaceDir)
+    expect(state.manifest.servers.gh).toBeDefined()
+  })
 })
 
 describe('link', () => {
@@ -164,6 +176,30 @@ describe('unlink + list + listLinks + remove', () => {
       configPath: cursorPath,
     })
     expect(res.removed).toBe(false)
+  })
+
+  test('unlink without an explicit configPath uses the manifest-recorded path', async () => {
+    // Regression: unlink used to skip the manifest link lookup that
+    // disconnect and remove already do. Without it, a caller who did
+    // `link({configPath: X})` and later `unlink()` (no configPath)
+    // dropped the manifest link but never rewrote file X, leaving an
+    // orphan on-disk entry.
+    await addServer(workspaceDir, {
+      name: 'gh',
+      spec: { transport: 'stdio', command: 'gh-mcp' },
+    })
+    await link(workspaceDir, {
+      serverName: 'gh',
+      agent: 'cursor',
+      configPath: cursorPath,
+    })
+    const res = await unlink(workspaceDir, {
+      serverName: 'gh',
+      agent: 'cursor',
+    })
+    expect(res.removed).toBe(true)
+    const raw = await readFile(cursorPath, 'utf8')
+    expect(JSON.parse(raw).mcpServers.gh).toBeUndefined()
   })
 
   test('list returns every manifest server entry', async () => {

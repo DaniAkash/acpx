@@ -115,6 +115,16 @@ describe('planAdd', () => {
     ).toThrow()
   })
 
+  test('trims the name before using it as the manifest key', () => {
+    // Regression: an untrimmed name would create an entry that
+    // subsequent link/unlink/disconnect calls could never find because
+    // they'd look up the trimmed key.
+    const plan = planAdd(baseState(), { name: '  gh  ', spec: STDIO_SPEC }, NOW)
+    expect(plan.name).toBe('gh')
+    expect(plan.nextManifest.servers.gh).toBeDefined()
+    expect(plan.nextManifest.servers['  gh  ']).toBeUndefined()
+  })
+
   test('rejects stdio spec with empty command', () => {
     expect(() =>
       planAdd(
@@ -197,6 +207,44 @@ describe('planLink', () => {
     )
     expect(plan.overwroteForeign).toBe(true)
     expect(plan.created).toBe(true)
+  })
+
+  test('re-linking with identical content skips the agent-config write op', () => {
+    // Regression: planLink previously wrote the agent config on every
+    // call, even when the resulting content was identical. That churned
+    // mtime and could trigger IDE file-watch reloads.
+    const state = stateWithServer(serverEntry(), {
+      agents: [agentFile('cursor', '/tmp/ws/cursor.json')],
+    })
+    const first = planLink(state, { serverName: 'gh', agent: 'cursor' }, NOW)
+    const configWriteOp = first.ops.find(
+      (op) => op.kind === 'writeFile' && op.path === '/tmp/ws/cursor.json',
+    )
+    expect(configWriteOp).toBeDefined()
+
+    // Re-plan against the state as it would be after applying the first
+    // plan: agent file now has the entry, manifest has the link.
+    const nextRaw =
+      configWriteOp?.kind === 'writeFile' ? configWriteOp.content : ''
+    const afterState = stateWithServer(
+      serverEntry({
+        links: {
+          cursor: { configPath: '/tmp/ws/cursor.json', createdAt: NOW },
+        },
+      }),
+      { agents: [agentFile('cursor', '/tmp/ws/cursor.json', nextRaw)] },
+    )
+    const second = planLink(
+      afterState,
+      { serverName: 'gh', agent: 'cursor' },
+      NOW,
+    )
+    // Only the manifest write op remains; the agent-config write is
+    // skipped because content is unchanged.
+    const secondConfigWrites = second.ops.filter(
+      (op) => op.kind === 'writeFile' && op.path === '/tmp/ws/cursor.json',
+    )
+    expect(secondConfigWrites).toHaveLength(0)
   })
 })
 

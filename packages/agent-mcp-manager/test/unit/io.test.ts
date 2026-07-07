@@ -60,6 +60,20 @@ describe('readState', () => {
     expect(state.agents[0]?.exists).toBe(false)
     expect(state.agents[0]?.rawContent).toBe('')
   })
+
+  test('empty-but-existing config file surfaces as exists: true', async () => {
+    // Regression: `exists` used to be `rawContent.length > 0`, which
+    // misclassified an empty file as missing. planRescan then reported
+    // spurious "missing" drift for editors that touch a config file
+    // empty before writing content.
+    const emptyFile = join(workspaceDir, 'empty.json')
+    await Bun.write(emptyFile, '')
+    const state = await readState(workspaceDir, ['cursor'], {
+      overrides: { cursor: emptyFile },
+    })
+    expect(state.agents[0]?.exists).toBe(true)
+    expect(state.agents[0]?.rawContent).toBe('')
+  })
 })
 
 describe('applyPlan', () => {

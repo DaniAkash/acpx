@@ -50,7 +50,11 @@ export async function addServer(
   const state = await readState(workspaceDir)
   const plan = planAdd(state, input, nowIso())
   await applyPlan(plan)
-  return { name: input.name, created: plan.created }
+  // Return the trimmed name planAdd actually persisted to the manifest,
+  // not the raw input. Downstream calls (link/unlink/disconnect/remove)
+  // resolve servers by their manifest name, so callers get the exact
+  // string they should pass to those verbs.
+  return { name: plan.name, created: plan.created }
 }
 
 export interface LinkInputAPI {
@@ -96,12 +100,19 @@ export async function unlink(
   workspaceDir: string,
   input: UnlinkInputAPI,
 ): Promise<UnlinkPlanSummary> {
+  // Same precedence disconnect/remove use: explicit override first, then
+  // whatever configPath the manifest recorded for this link, then the
+  // OS-resolved default. Without the manifest lookup, an unlink after a
+  // link() with a non-default path would drop the manifest link record
+  // but leave the on-disk entry orphaned.
+  const initial = await readState(workspaceDir)
+  const recorded =
+    initial.manifest.servers[input.serverName]?.links[input.agent]?.configPath
+  const configPath = input.configPath ?? recorded
   const state = await readState(workspaceDir, [input.agent], {
     scope: input.scope,
     projectRoot: input.projectRoot,
-    overrides: input.configPath
-      ? { [input.agent]: input.configPath }
-      : undefined,
+    overrides: configPath ? { [input.agent]: configPath } : undefined,
   })
   const plan = planUnlink(state, input)
   await applyPlan(plan)

@@ -12,7 +12,10 @@
 
 import * as fsp from 'node:fs/promises'
 import * as path from 'node:path'
-import { atomicWriteFile, readFileOrEmpty } from '../_internal/atomic-write.ts'
+import {
+  atomicWriteFile,
+  readFileWithExistence,
+} from '../_internal/atomic-write.ts'
 import { readManifest } from '../_internal/manifest.ts'
 import { resolveAgentMcpConfigPath } from '../agents.ts'
 import type { AgentFileState, FsOp, Plan, State } from '../planner/types.ts'
@@ -54,13 +57,13 @@ export async function readState(
     const configPath =
       opts.overrides?.[agent] ??
       (await resolveAgentMcpConfigPath(agent, scope, opts.projectRoot))
-    const rawContent = await readFileOrEmpty(configPath)
+    const { content, exists } = await readFileWithExistence(configPath)
     agentFiles.push({
       agent,
       scope,
       configPath,
-      rawContent,
-      exists: rawContent.length > 0,
+      rawContent: content,
+      exists,
     })
   }
   return {
