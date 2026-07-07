@@ -21,6 +21,8 @@ export {
 export type {
   BoundApi,
   DisconnectInputAPI,
+  IsInstalledInput,
+  IsInstalledResult,
   LinkInputAPI,
   ListedLink,
   ListLinksInputAPI,
@@ -31,6 +33,7 @@ export type {
 export {
   bind,
   disconnect,
+  isInstalled,
   link,
   list,
   listLinks,
@@ -40,6 +43,7 @@ export {
 } from './api.ts'
 
 export {
+  AgentNotInstalledError,
   AgentNotSupportedError,
   ForeignEntryError,
   InvalidServerSpecError,
@@ -72,4 +76,4 @@ export type {
   ServerManifest,
 } from './types.ts'
 
-export const VERSION = '0.0.4-rc.2'
+export const VERSION = '0.0.4-rc.3'

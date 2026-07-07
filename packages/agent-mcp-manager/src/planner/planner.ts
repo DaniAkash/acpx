@@ -12,9 +12,12 @@
  * agent, and path when relevant.
  */
 
+import { dirname } from 'node:path'
+
 import { getCatalogEntry } from '../agents.ts'
 import { getEmitter } from '../emitters/index.ts'
 import {
+  AgentNotInstalledError,
   AgentNotSupportedError,
   ForeignEntryError,
   InvalidServerSpecError,
@@ -63,6 +66,7 @@ export function planLink(
   validateSpec(input.server.spec)
   ensureTransportSupported(input.agent, scope, input.server.spec.transport)
   const agentFile = requireAgentFile(state, input.agent, scope)
+  ensureAgentInstalled(input.agent, agentFile)
   const client = getCatalogEntry(input.agent)
   const emitter = getEmitter(client, scope)
 
@@ -442,6 +446,15 @@ function requireAgentFile(
     )
   }
   return file
+}
+
+function ensureAgentInstalled(agent: AgentId, agentFile: AgentFileState): void {
+  if (agentFile.exists || agentFile.parentExists) return
+  throw new AgentNotInstalledError(
+    agent,
+    agentFile.configPath,
+    dirname(agentFile.configPath),
+  )
 }
 
 function findAgentFile(

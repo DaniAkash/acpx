@@ -17,6 +17,7 @@ import {
   readFileWithExistence,
 } from '../_internal/atomic-write.ts'
 import { readManifest } from '../_internal/manifest.ts'
+import { pathExists } from '../_internal/paths.ts'
 import { resolveAgentMcpConfigPath } from '../agents.ts'
 import type { AgentFileState, FsOp, Plan, State } from '../planner/types.ts'
 import type { AgentId, AgentScope } from '../types.ts'
@@ -58,12 +59,18 @@ export async function readState(
       opts.overrides?.[agent] ??
       (await resolveAgentMcpConfigPath(agent, scope, opts.projectRoot))
     const { content, exists } = await readFileWithExistence(configPath)
+    // When the file exists, the parent must too. Only stat the parent
+    // in the miss case so the common path stays one stat.
+    const parentExists = exists
+      ? true
+      : await pathExists(path.dirname(configPath))
     agentFiles.push({
       agent,
       scope,
       configPath,
       rawContent: content,
       exists,
+      parentExists,
     })
   }
   return {

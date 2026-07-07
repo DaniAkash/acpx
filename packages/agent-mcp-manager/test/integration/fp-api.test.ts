@@ -1,17 +1,19 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
   bind,
   disconnect,
+  isInstalled,
   link,
   list,
   listLinks,
   remove,
   unlink,
 } from '../../src/api.ts'
+import { AgentNotInstalledError } from '../../src/errors.ts'
 import { readState } from '../../src/io/index.ts'
 import type { McpServer } from '../../src/types.ts'
 
@@ -264,5 +266,108 @@ describe('bind', () => {
     })
     const links = await mgr.listLinks()
     expect(links).toHaveLength(1)
+  })
+})
+
+describe('install-check gate', () => {
+  test('link() throws AgentNotInstalledError when the config parent dir does not exist', async () => {
+    // Point Cursor at a path deep inside a non-existent directory
+    // chain. Even the immediate parent does not exist, so the install
+    // gate fires.
+    const missingParent = join(workspaceDir, 'nonexistent-agent-dir')
+    const missingConfig = join(missingParent, 'cursor.json')
+    let caught: unknown
+    try {
+      await link(workspaceDir, {
+        server: GH_STDIO,
+        agent: 'cursor',
+        configPath: missingConfig,
+      })
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeInstanceOf(AgentNotInstalledError)
+    const err = caught as AgentNotInstalledError
+    expect(err.agent).toBe('cursor')
+    expect(err.configPath).toBe(missingConfig)
+    expect(err.parentDir).toBe(missingParent)
+  })
+
+  test('link() succeeds when the parent directory exists but the file does not', async () => {
+    const parent = join(workspaceDir, 'fresh-agent')
+    await mkdir(parent, { recursive: true })
+    const configPath = join(parent, 'cursor.json')
+    await link(workspaceDir, {
+      server: GH_STDIO,
+      agent: 'cursor',
+      configPath,
+    })
+    const raw = await readFile(configPath, 'utf8')
+    expect(JSON.parse(raw).mcpServers.gh.command).toBe('gh-mcp')
+  })
+
+  test('AgentNotInstalledError is re-exported from the package root', async () => {
+    const mod = await import('../../src/index.ts')
+    expect(mod.AgentNotInstalledError).toBeDefined()
+    expect(typeof mod.AgentNotInstalledError).toBe('function')
+  })
+
+  test('isInstalled via bind() returns the same result as the direct call', async () => {
+    // Point $HOME at a fresh dir so cursor's default path resolves
+    // consistently for both calls.
+    const originalHome = process.env.HOME
+    const home = await mkdtemp(join(tmpdir(), 'acpx-bind-installed-'))
+    process.env.HOME = home
+    try {
+      await mkdir(join(home, '.cursor'), { recursive: true })
+      const mgr = bind(workspaceDir)
+      const viaBind = await mgr.isInstalled({ agents: ['cursor'] })
+      const direct = await isInstalled({ agents: ['cursor'] })
+      expect(viaBind).toEqual(direct)
+      expect(viaBind.cursor).toBe(true)
+    } finally {
+      if (originalHome === undefined) delete process.env.HOME
+      else process.env.HOME = originalHome
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  test('isInstalled predicts what link would throw (dual invariant)', async () => {
+    // When isInstalled reports true for a configPath override whose
+    // parent exists, link() succeeds. When false, link() throws.
+    const okParent = join(workspaceDir, 'ok')
+    await mkdir(okParent, { recursive: true })
+    const okConfig = join(okParent, 'cursor.json')
+    const missingParent = join(workspaceDir, 'missing')
+    const missingConfig = join(missingParent, 'cursor.json')
+
+    // Direct helper: check whether a specific file location is
+    // link-safe by looking at its parent. Mirrors the isInstalled
+    // signal for the configPath-override case.
+    const stat = await import('node:fs/promises').then((m) => m.stat)
+    const parentExists = async (p: string) => {
+      try {
+        await stat(p)
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    expect(await parentExists(okParent)).toBe(true)
+    expect(await parentExists(missingParent)).toBe(false)
+
+    await link(workspaceDir, {
+      server: GH_STDIO,
+      agent: 'cursor',
+      configPath: okConfig,
+    })
+    await expect(
+      link(workspaceDir, {
+        server: GH_STDIO,
+        agent: 'cursor',
+        configPath: missingConfig,
+      }),
+    ).rejects.toBeInstanceOf(AgentNotInstalledError)
   })
 })

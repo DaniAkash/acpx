@@ -92,3 +92,32 @@ export class UnresolvedConfigPathError extends McpManagerError {
     this.agent = agent
   }
 }
+
+/**
+ * Thrown by `link()` (and `planLink` at the pure layer) when the target
+ * agent's config file location is not writable-safely: neither the file
+ * nor its parent directory exists on disk. The agent has either not been
+ * installed or has been installed but never launched, so the config
+ * directory does not exist yet.
+ *
+ * Consumers precheck with `isInstalled({agents})` to avoid this error;
+ * or catch it and surface the install prompt to the user.
+ */
+export class AgentNotInstalledError extends McpManagerError {
+  readonly agent: AgentId
+  readonly configPath: string
+  readonly parentDir: string
+  constructor(agent: AgentId, configPath: string, parentDir: string) {
+    super(
+      `Agent "${agent}" does not appear to be installed on this machine. ` +
+        `The library needs "${configPath}" or its parent directory "${parentDir}" ` +
+        `to exist before it can write an MCP entry. ` +
+        `Install ${agent} and launch it at least once, or pass an explicit ` +
+        `"configPath" to write to a custom location.`,
+    )
+    this.name = 'AgentNotInstalledError'
+    this.agent = agent
+    this.configPath = configPath
+    this.parentDir = parentDir
+  }
+}

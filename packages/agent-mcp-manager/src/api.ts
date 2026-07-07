@@ -11,6 +11,11 @@
  * and use the pure planner functions directly.
  */
 
+import { dirname } from 'node:path'
+
+import { pathExists } from './_internal/paths.ts'
+import { resolveAgentMcpConfigPath } from './agents.ts'
+import { UnresolvedConfigPathError } from './errors.ts'
 import { applyPlan, readState } from './io/index.ts'
 import {
   planDisconnect,
@@ -241,6 +246,58 @@ export async function rescan(
 }
 
 // -------------------------------------------------------------------
+// isInstalled: batch check whether agents can safely receive a link.
+//
+// "Installed" here means "the library can write MCP config to this
+// agent's config path": either the config file already exists on disk
+// OR its parent directory does. This is the same signal `link()` uses
+// to gate `AgentNotInstalledError`, so `isInstalled` predicts what
+// `link()` would throw.
+// -------------------------------------------------------------------
+
+export interface IsInstalledInput {
+  agents: AgentId[]
+  scope?: AgentScope
+  projectRoot?: string
+}
+
+/**
+ * Flat map of agent id to install boolean. Only agents present in
+ * `input.agents` appear as keys; consumers who need to iterate know the
+ * key set from their own input. Duplicate ids in the input collapse.
+ */
+export type IsInstalledResult = Partial<Record<AgentId, boolean>>
+
+export async function isInstalled(
+  input: IsInstalledInput,
+): Promise<IsInstalledResult> {
+  const scope = input.scope ?? 'system'
+  const out: IsInstalledResult = {}
+  for (const agent of input.agents) {
+    if (agent in out) continue
+    out[agent] = await checkOneInstalled(agent, scope, input.projectRoot)
+  }
+  return out
+}
+
+async function checkOneInstalled(
+  agent: AgentId,
+  scope: AgentScope,
+  projectRoot: string | undefined,
+): Promise<boolean> {
+  let configPath: string
+  try {
+    configPath = await resolveAgentMcpConfigPath(agent, scope, projectRoot)
+  } catch (err) {
+    if (err instanceof UnresolvedConfigPathError) return false
+    throw err
+  }
+  if (await pathExists(configPath)) return true
+  if (await pathExists(dirname(configPath))) return true
+  return false
+}
+
+// -------------------------------------------------------------------
 // bind: convenience wrapper for a fixed workspaceDir
 // -------------------------------------------------------------------
 
@@ -252,6 +309,7 @@ export interface BoundApi {
   list(): Promise<ManifestServerEntry[]>
   listLinks(input?: ListLinksInputAPI): Promise<ListedLink[]>
   rescan(input?: RescanInputAPI): Promise<RescanReport>
+  isInstalled(input: IsInstalledInput): Promise<IsInstalledResult>
 }
 
 export function bind(workspaceDir: string): BoundApi {
@@ -263,5 +321,6 @@ export function bind(workspaceDir: string): BoundApi {
     list: () => list(workspaceDir),
     listLinks: (input) => listLinks(workspaceDir, input),
     rescan: (input) => rescan(workspaceDir, input),
+    isInstalled: (input) => isInstalled(input),
   }
 }

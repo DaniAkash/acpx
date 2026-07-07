@@ -29,7 +29,7 @@ export function expandPaths(paths: string[]): string[] {
   return out
 }
 
-async function pathExists(p: string): Promise<boolean> {
+export async function pathExists(p: string): Promise<boolean> {
   try {
     await fsp.stat(p)
     return true

@@ -42,6 +42,14 @@ export interface AgentFileState {
   rawContent: string
   /** True when the file existed on disk when State was read. */
   exists: boolean
+  /**
+   * True when the parent directory of `configPath` existed on disk at
+   * State read time. A false here means the agent is not installed
+   * (or has never been launched); `planLink` throws
+   * `AgentNotInstalledError` rather than silently `mkdir -p`-ing the
+   * directory and creating a ghost config.
+   */
+  parentExists: boolean
 }
 
 /**

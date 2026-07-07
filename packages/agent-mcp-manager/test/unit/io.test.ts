@@ -74,6 +74,36 @@ describe('readState', () => {
     expect(state.agents[0]?.exists).toBe(true)
     expect(state.agents[0]?.rawContent).toBe('')
   })
+
+  test('parentExists: true when the config file exists', async () => {
+    const cursorPath = join(workspaceDir, 'cursor.json')
+    await Bun.write(cursorPath, JSON.stringify({ mcpServers: {} }))
+    const state = await readState(workspaceDir, ['cursor'], {
+      overrides: { cursor: cursorPath },
+    })
+    expect(state.agents[0]?.exists).toBe(true)
+    expect(state.agents[0]?.parentExists).toBe(true)
+  })
+
+  test('parentExists: true when only the parent directory exists (file missing)', async () => {
+    // The workspaceDir (mkdtemp'd) exists; the file inside it does not.
+    // This mirrors a freshly-launched-but-not-configured-yet agent.
+    const state = await readState(workspaceDir, ['cursor'], {
+      overrides: { cursor: join(workspaceDir, 'not-created-yet.json') },
+    })
+    expect(state.agents[0]?.exists).toBe(false)
+    expect(state.agents[0]?.parentExists).toBe(true)
+  })
+
+  test('parentExists: false when neither the file nor its parent exists', async () => {
+    const state = await readState(workspaceDir, ['cursor'], {
+      overrides: {
+        cursor: join(workspaceDir, 'never-created-dir', 'child.json'),
+      },
+    })
+    expect(state.agents[0]?.exists).toBe(false)
+    expect(state.agents[0]?.parentExists).toBe(false)
+  })
 })
 
 describe('applyPlan', () => {

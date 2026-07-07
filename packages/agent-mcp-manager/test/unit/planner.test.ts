@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  AgentNotInstalledError,
   ForeignEntryError,
   InvalidServerSpecError,
   UnsupportedTransportError,
@@ -78,8 +79,16 @@ function agentFile(
   configPath: string,
   raw = '',
   scope: 'system' | 'project' = 'system',
+  parentExists = true,
 ) {
-  return { agent, scope, configPath, rawContent: raw, exists: raw.length > 0 }
+  return {
+    agent,
+    scope,
+    configPath,
+    rawContent: raw,
+    exists: raw.length > 0,
+    parentExists,
+  }
 }
 
 // -------------------------------------------------------------------
@@ -249,6 +258,72 @@ describe('planLink', () => {
       (op) => op.kind === 'writeFile' && op.path === '/tmp/ws/cursor.json',
     )
     expect(secondConfigWrites).toHaveLength(0)
+  })
+
+  // -----------------------------------------------------------------
+  // Install-status gate. Throws AgentNotInstalledError when the agent's
+  // config path is under a non-existent directory. Predicts what link()
+  // would throw and pairs with isInstalled({agents}) as its precheck.
+  // -----------------------------------------------------------------
+
+  test('throws AgentNotInstalledError when neither the config file nor its parent directory exists', () => {
+    const state = baseState({
+      agents: [agentFile('cursor', '/tmp/ws/cursor.json', '', 'system', false)],
+    })
+    expect(() => planLink(state, { server: GH, agent: 'cursor' }, NOW)).toThrow(
+      AgentNotInstalledError,
+    )
+  })
+
+  test('does NOT throw when the parent directory exists (fresh agent, no MCP yet)', () => {
+    const state = baseState({
+      agents: [agentFile('cursor', '/tmp/ws/cursor.json', '', 'system', true)],
+    })
+    const plan = planLink(state, { server: GH, agent: 'cursor' }, NOW)
+    expect(plan.created).toBe(true)
+  })
+
+  test('does NOT throw when the config file already exists', () => {
+    const configJson = JSON.stringify({ mcpServers: {} })
+    const state = baseState({
+      agents: [
+        agentFile('cursor', '/tmp/ws/cursor.json', configJson, 'system', true),
+      ],
+    })
+    const plan = planLink(state, { server: GH, agent: 'cursor' }, NOW)
+    expect(plan.created).toBe(true)
+  })
+
+  test('install-gate error carries the correct agent, configPath, and parentDir', () => {
+    const state = baseState({
+      agents: [
+        agentFile('cursor', '/tmp/ws/nope/cursor.json', '', 'system', false),
+      ],
+    })
+    try {
+      planLink(state, { server: GH, agent: 'cursor' }, NOW)
+      throw new Error('expected AgentNotInstalledError')
+    } catch (err) {
+      expect(err).toBeInstanceOf(AgentNotInstalledError)
+      const e = err as AgentNotInstalledError
+      expect(e.agent).toBe('cursor')
+      expect(e.configPath).toBe('/tmp/ws/nope/cursor.json')
+      expect(e.parentDir).toBe('/tmp/ws/nope')
+    }
+  })
+
+  test('UnsupportedTransportError still fires before the install gate', () => {
+    // Transport validity is a property of the input; check it first
+    // so a caller sending a garbage spec sees the semantic error and
+    // does not have to install an agent just to see it.
+    const state = baseState({
+      agents: [
+        agentFile('claude-desktop', '/tmp/ws/claude.json', '', 'system', false),
+      ],
+    })
+    expect(() =>
+      planLink(state, { server: GH_HTTP, agent: 'claude-desktop' }, NOW),
+    ).toThrow(UnsupportedTransportError)
   })
 })
 
