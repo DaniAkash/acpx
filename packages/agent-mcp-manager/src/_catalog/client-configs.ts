@@ -317,14 +317,49 @@ export const opencode: ClientConfig = {
   id: 'opencode',
   displayName: 'OpenCode',
   installCheckPaths: {
-    darwin: ['$HOME/.opencode'],
-    linux: ['$HOME/.opencode'],
-    win32: ['$USERPROFILE\\.opencode'],
+    // `$HOME/.local/share/opencode` is OpenCode's OAuth token store
+    // (per its docs at https://opencode.ai/docs/mcp-servers/). It
+    // exists as soon as the user has authenticated any OAuth MCP
+    // server or run the OpenCode installer, even before they create
+    // their global `opencode.json`.
+    darwin: [
+      '$XDG_CONFIG_HOME/opencode',
+      '$HOME/.config/opencode',
+      '$HOME/.opencode',
+      '$HOME/.local/share/opencode',
+    ],
+    linux: [
+      '$XDG_CONFIG_HOME/opencode',
+      '$HOME/.config/opencode',
+      '$HOME/.opencode',
+      '$HOME/.local/share/opencode',
+    ],
+    win32: [
+      '$USERPROFILE\\.config\\opencode',
+      '$USERPROFILE\\.opencode',
+      '$USERPROFILE\\.local\\share\\opencode',
+    ],
   },
   systemPaths: {
-    darwin: ['$HOME/.opencode/opencode.jsonc'],
-    linux: ['$HOME/.opencode/opencode.jsonc'],
-    win32: ['$USERPROFILE\\.opencode\\opencode.jsonc'],
+    darwin: [
+      '$XDG_CONFIG_HOME/opencode/opencode.json',
+      '$HOME/.config/opencode/opencode.json',
+      '$XDG_CONFIG_HOME/opencode/opencode.jsonc',
+      '$HOME/.config/opencode/opencode.jsonc',
+      '$HOME/.opencode/opencode.jsonc',
+    ],
+    linux: [
+      '$XDG_CONFIG_HOME/opencode/opencode.json',
+      '$HOME/.config/opencode/opencode.json',
+      '$XDG_CONFIG_HOME/opencode/opencode.jsonc',
+      '$HOME/.config/opencode/opencode.jsonc',
+      '$HOME/.opencode/opencode.jsonc',
+    ],
+    win32: [
+      '$USERPROFILE\\.config\\opencode\\opencode.json',
+      '$USERPROFILE\\.config\\opencode\\opencode.jsonc',
+      '$USERPROFILE\\.opencode\\opencode.jsonc',
+    ],
   },
   format: 'jsonc',
   supportedTransports: { system: ['stdio', 'sse', 'http'] },
@@ -344,8 +379,8 @@ export const opencode: ClientConfig = {
     firstParty: 'https://opencode.ai/docs/mcp',
     smithery: SMITHERY_URL,
     notes:
-      'Command written as a single array of [command, ...args] under `command`. `env` renamed to `environment`. Both stdio and remote entries carry a `type` field (`local` vs `remote`).',
-    verified: VERIFIED,
+      'Command written as a single array of [command, ...args] under `command`. `env` renamed to `environment`. Both stdio and remote entries carry a `type` field (`local` vs `remote`). OpenCode 1.x stores its global config at $XDG_CONFIG_HOME/opencode/ (falling back to ~/.config/opencode/) as `opencode.json`; installCheckPaths also list ~/.local/share/opencode (the OAuth token store, created before the config file exists) and legacy ~/.opencode/. Detection order prefers the XDG/.config locations to avoid missing fresh installs.',
+    verified: '2026-07-10',
   },
 }
 
@@ -671,9 +706,9 @@ export const antigravity: ClientConfig = {
     win32: ['$USERPROFILE\\.gemini\\antigravity'],
   },
   systemPaths: {
-    darwin: ['$HOME/.gemini/antigravity/mcp_config.json'],
-    linux: ['$HOME/.gemini/antigravity/mcp_config.json'],
-    win32: ['$USERPROFILE\\.gemini\\antigravity\\mcp_config.json'],
+    darwin: ['$HOME/.gemini/config/mcp_config.json'],
+    linux: ['$HOME/.gemini/config/mcp_config.json'],
+    win32: ['$USERPROFILE\\.gemini\\config\\mcp_config.json'],
   },
   format: 'json',
   supportedTransports: { system: ['stdio', 'http'] },
@@ -686,8 +721,8 @@ export const antigravity: ClientConfig = {
     firstParty: 'https://antigravity.google/',
     smithery: SMITHERY_URL,
     notes:
-      "Google's Antigravity editor. Uses `serverUrl` for remote entries (matches Windsurf's convention).",
-    verified: VERIFIED,
+      "Google's Antigravity editor. Uses `serverUrl` for remote entries (matches Windsurf's convention). Config file lives at ~/.gemini/config/mcp_config.json; the ~/.gemini/antigravity/ directory is the install fingerprint.",
+    verified: '2026-07-10',
   },
 }
 

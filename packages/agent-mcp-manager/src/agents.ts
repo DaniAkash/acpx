@@ -80,6 +80,23 @@ export async function resolveAgentMcpConfigPath(
 }
 
 /**
+ * The catalog's install-detection paths for this agent on the
+ * current OS, expanded (env vars substituted, unresolvable entries
+ * dropped). These are the directories / files that indicate the
+ * agent is present on the machine, not the config file path we
+ * would write to (that is `resolveAgentMcpConfigPath`). Callers
+ * pass the result to `anyExists` to answer "is this agent
+ * installed?".
+ *
+ * Empty when the catalog has no `installCheckPaths` entry for the
+ * current platform.
+ */
+export function resolveInstallCheckPaths(agent: AgentId): string[] {
+  const entry = getCatalogEntry(agent)
+  return expandPaths(pickOsList(entry.installCheckPaths))
+}
+
+/**
  * Resolve the transport-capability set the library uses for the given
  * agent at the given scope. Project scope falls back to system scope
  * when the catalog entry does not declare a project-specific override.

@@ -17,8 +17,11 @@ import {
   readFileWithExistence,
 } from '../_internal/atomic-write.ts'
 import { readManifest } from '../_internal/manifest.ts'
-import { pathExists } from '../_internal/paths.ts'
-import { resolveAgentMcpConfigPath } from '../agents.ts'
+import { anyExists, pathExists } from '../_internal/paths.ts'
+import {
+  resolveAgentMcpConfigPath,
+  resolveInstallCheckPaths,
+} from '../agents.ts'
 import type { AgentFileState, FsOp, Plan, State } from '../planner/types.ts'
 import type { AgentId, AgentScope } from '../types.ts'
 
@@ -55,8 +58,9 @@ export async function readState(
   const scope = opts.scope ?? 'system'
   const agentFiles: AgentFileState[] = []
   for (const agent of agents ?? []) {
+    const override = opts.overrides?.[agent]
     const configPath =
-      opts.overrides?.[agent] ??
+      override ??
       (await resolveAgentMcpConfigPath(agent, scope, opts.projectRoot))
     const { content, exists } = await readFileWithExistence(configPath)
     // When the file exists, the parent must too. Only stat the parent
@@ -64,6 +68,22 @@ export async function readState(
     const parentExists = exists
       ? true
       : await pathExists(path.dirname(configPath))
+    // installCheckPaths widens the install signal past `exists ||
+    // parentExists` for agents whose config file is user-created
+    // (OpenCode's `opencode.json`, Codex's `config.toml`, ...). Only
+    // applied when the caller did NOT pass an explicit configPath
+    // override: an override means the caller chose the write target,
+    // and honoring installCheckPaths there would let `link()` create
+    // arbitrary directories from an unrelated install signal. Also
+    // never applied in project scope (installedness is projectRoot-
+    // based) or when `exists || parentExists` already answers true.
+    let installCheckHit = false
+    if (!override && scope === 'system' && !(exists || parentExists)) {
+      const checkList = resolveInstallCheckPaths(agent)
+      if (checkList.length > 0) {
+        installCheckHit = await anyExists(checkList)
+      }
+    }
     agentFiles.push({
       agent,
       scope,
@@ -71,6 +91,7 @@ export async function readState(
       rawContent: content,
       exists,
       parentExists,
+      installCheckHit,
     })
   }
   return {
