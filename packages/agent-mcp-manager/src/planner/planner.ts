@@ -279,7 +279,7 @@ export function planRemove(
       // in readState, we skip the file write (the manifest still gets
       // its unlink record dropped).
       //
-      // Scope inference: v0.0.4's ManifestLinkEntry does not record
+      // Scope inference: v0.1.0's ManifestLinkEntry does not record
       // scope. Default to 'system' because it's the common case AND
       // because for every 23-client catalog entry that ships project
       // overrides, the project stdio shape uses the same topLevelKey

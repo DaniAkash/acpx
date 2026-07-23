@@ -2,7 +2,7 @@
 
 `agent-mcp-manager` is authored under MIT. This file discloses the
 third-party projects whose work informed the catalog and the
-architectural choices behind v0.0.4.
+architectural choices behind v0.1.0.
 
 No source code from any listed project is incorporated in the
 published package. Where a project is listed under an AGPL license,
@@ -33,10 +33,10 @@ package has no runtime dependency on it.
 - Source: https://github.com/docker/mcp-gateway
 - License: MIT
 - Role: the v0.0.3 catalog was hand-derived from
-  `pkg/client/config.yml`. v0.0.4 replaces that with a hand-authored
+  `pkg/client/config.yml`. v0.1.0 replaces that with a hand-authored
   catalog whose write shapes are informed by both docker/mcp-gateway
   (for stdio) and smithery-ai/cli (for HTTP). The vendored YAML has
-  been removed from this package as of v0.0.4; only the historical
+  been removed from this package as of v0.1.0; only the historical
   git history under the feat/mcp-manager-v0.0.4-fp branch retains it.
 - No source code from mcp-gateway is incorporated in the published
   package.

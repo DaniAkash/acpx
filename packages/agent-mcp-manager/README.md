@@ -4,16 +4,15 @@
 > across 23 AI coding agents. Functional API, dry-run capable, 23-client
 > catalog with per-client shape declarations.
 
-> [!WARNING]
-> **v0.0.4 is a breaking release.** The `createMcpManager` class API
-> has been removed and replaced with a functional surface. See the
+> [!IMPORTANT]
+> **v0.1.0 is stable.** The `createMcpManager` class API from the 0.0.x
+> line has been removed and replaced with a functional surface. See the
 > [Migration guide](#migration-from-v003) below for a mechanical
 > translation table. If you cannot migrate immediately, pin
-> `agent-mcp-manager@^0.0.3`.
-
-> [!WARNING]
-> **Experimental.** The 0.0.x line is under active development. The
-> public API may change between patch versions. Pin exact versions.
+> `agent-mcp-manager@^0.0.3`; that line stays on npm unmaintained.
+>
+> Semver applies from 0.1.0 onward: breaking changes bump minor until
+> 1.0.0, patches are safe to take within a minor.
 
 `agent-mcp-manager` writes MCP server entries into the real config
 files that AI coding agents read on launch. Claude Desktop's
@@ -85,7 +84,7 @@ await mgr.link({ server: github, agent: 'gemini' })
 | `list` | `(workspaceDir) => Promise<ManifestServerEntry[]>` | Every server in the manifest. |
 | `listLinks` | `(workspaceDir, {serverNames?, agents?}?) => Promise<ListedLink[]>` | Every (server, agent, configPath) triple in the manifest. Filter by server name or agent. |
 | `rescan` | `(workspaceDir, {agents?}?) => Promise<RescanReport>` | Diff manifest links against disk. Reports verified / drifted / missing entries. **See [rescan section](#rescan-detecting-drift-between-manifest-and-disk) below.** |
-| `isInstalled` | `({agents, scope?, projectRoot?}) => Promise<Partial<Record<AgentId, boolean>>>` | Batch check whether each agent's config location is writable-safely (file exists OR parent directory exists). Predicts what `link()` would throw. **See [isInstalled section](#isinstalled-checking-agent-availability) below.** |
+| `isInstalled` | `({agents, scope?, projectRoot?}) => Promise<Partial<Record<AgentId, boolean>>>` | Batch check whether each agent is present on the machine (union of install-fingerprint, config file, and config-parent signals). Predicts what `link()` would throw. **See [isInstalled section](#isinstalled-checking-agent-availability) below.** |
 | `bind` | `(workspaceDir) => BoundApi` | Sugar for calling all verbs with the same workspaceDir. Stateless: every method still runs `readState -> plan -> applyPlan`. |
 
 ### The server value
@@ -221,8 +220,8 @@ if (drifted.length + missing.length > 0) {
 
 ### What `rescan` does NOT do
 
-- It does not detect **spec drift** (an entry exists on disk but was written with a different command/url than the manifest's current spec). The current implementation only checks for entry presence. Spec-drift detection is a v0.0.5 candidate; today, you can compare `list(workspaceDir)[i].spec` against a parse of the config file yourself if you need it.
-- It does not scan for **unmanaged entries** (entries on disk that the manifest never wrote). v0.0.3 exposed this via `RescanResult.unmanaged`; v0.0.4 does not. This is also a v0.0.5 candidate.
+- It does not detect **spec drift** (an entry exists on disk but was written with a different command/url than the manifest's current spec). The current implementation only checks for entry presence. Spec-drift detection is a v0.2.0 candidate; today, you can compare `list(workspaceDir)[i].spec` against a parse of the config file yourself if you need it.
+- It does not scan for **unmanaged entries** (entries on disk that the manifest never wrote). v0.0.3 exposed this via `RescanResult.unmanaged`; v0.1.0 does not. This is also a v0.2.0 candidate.
 - It does not touch disk. `rescan` is read-only and returns a value; the caller decides what to do about it.
 
 ## `isInstalled`: checking agent availability
@@ -245,9 +244,17 @@ Return shape: `Partial<Record<AgentId, boolean>>`. Only the agents you asked abo
 
 ### What "installed" means here
 
-An agent is installed iff **its config file already exists OR the parent directory of that config file exists.** For Cursor that's `~/.cursor/mcp.json` or `~/.cursor/`. For Claude Desktop it's `~/Library/Application Support/Claude/claude_desktop_config.json` or `~/Library/Application Support/Claude/`. If neither exists, the agent either hasn't been installed or has been installed but never launched. Either way, the library can't safely write to it.
+In system scope, an agent is installed if **any one** of three signals fires:
 
-This is the same signal `link()` uses to gate `AgentNotInstalledError`. So `isInstalled` is exactly the precheck for `link`: if `installed[agent] === false`, `link({server, agent})` will throw.
+1. One of the catalog's `installCheckPaths` for the agent exists on disk. These are the agent's install fingerprints (`/Applications/Cursor.app`, `~/.opencode/`, `~/.local/share/opencode/`, ...).
+2. The resolved config file already exists on disk (`~/.cursor/mcp.json`, `~/Library/Application Support/Claude/claude_desktop_config.json`, ...).
+3. The parent directory of the resolved config file exists.
+
+In project scope, only signals (2) and (3) apply against the resolved `projectRoot` config path; `installCheckPaths` is a system-installation concept.
+
+The three-signal system exists because some agents create their global config file only when the user first interacts with MCP. OpenCode's `opencode.json` and Codex's `config.toml` are user-created; a freshly installed OpenCode has no config file OR parent yet, but its data directories (`~/.opencode/`, `~/.local/share/opencode/`) exist. Without the `installCheckPaths` signal, `isInstalled` would report false for real fresh installs. Signals (2) and (3) still catch agents whose parent directory is created at install time (Cursor's `~/.cursor/`).
+
+This is the same union-of-signals `link()` uses to gate `AgentNotInstalledError`. So `isInstalled` is exactly the precheck for `link`: if `installed[agent] === false`, `link({server, agent})` will throw.
 
 ### When to call it
 
@@ -290,12 +297,12 @@ const installed = await isInstalled({ agents: ['cursor'] })
 
 ### `isInstalled` vs `detectInstalledAgents`
 
-`detectInstalledAgents` (already in v0.0.3) returns `AgentInfo[]` with an `installed` flag based on the catalog's `installCheckPaths` (app bundle locations like `/Applications/Cursor.app`). It answers "is the app on disk?" That's a different question from "can the library write MCP config here?"
+Both use `installCheckPaths`, but they answer subtly different questions.
 
-- Use `isInstalled` when you're about to write config or need to precheck `link`. Same signal as the gate.
-- Use `detectInstalledAgents` when you want to know whether the app bundle exists, without necessarily knowing whether the user has launched it. Useful for "we found Cursor in /Applications but you haven't launched it yet; do that first" UX flows.
+- **`isInstalled`** is the precheck for `link()`. Returns true when ANY of the three signals fires (install fingerprint, config file exists, or config parent exists), so `installed[agent] === true` is a hard promise that `link({server, agent})` will not throw `AgentNotInstalledError`.
+- **`detectInstalledAgents`** is the legacy per-agent metadata verb from the v0.0.3 line. Returns an array of `{ id, displayName, configPath, installed }` where `installed` is true iff `installCheckPaths` fires. It does not consult the resolved config-path signals; a Cursor with `~/.cursor/mcp.json` but no `/Applications/Cursor.app` (e.g., installed to a non-standard location) can read as `installed: false` here while `isInstalled` reports true.
 
-Both signals will drift apart in cases like unlaunched fresh installs. Pick the one that matches your question.
+Use `isInstalled` for gate-consistent precheck. Use `detectInstalledAgents` for the per-agent info payload (config path + display name + install fingerprint) when populating a UI table.
 
 ### `AgentNotInstalledError`
 
@@ -317,23 +324,23 @@ If you're on v0.0.3 with `createMcpManager`, you have three paths:
 
 1. **Migrate to the functional API** (recommended). This section gives you the mechanical translations.
 2. **Pin v0.0.3** with `"agent-mcp-manager": "^0.0.3"` in your package.json. The v0.0.3 line is unmaintained but functional; it stays on npm.
-3. **Wait**. No compat shim is planned. v0.0.5+ builds on the functional surface.
+3. **Wait**. No compat shim is planned. v0.2.0+ builds on the functional surface.
 
 ### What changed and why
 
 The v0.0.3 `createMcpManager()` returned an object with a private `manifest` reference that mutated across method calls. This produced a real bug ([#63](https://github.com/DaniAkash/agent-toolkit/issues/63)): the "disconnect one agent" flow required a three-line dance (`unlink` + `listLinks` + conditional `remove`), and any race or logic bug in the caller could silently orphan other agents' link records.
 
-Under v0.0.4:
+Under v0.1.0:
 
 - **No mutable in-memory manifest.** Every verb reads the manifest from disk at call time, computes a plan, applies it.
-- **No pre-registration step.** The v0.0.3 flow was `add(name, spec)` then `link(name, agent)`. That two-step surface let the two calls drift out of sync, allowed manifest ghosts, and made concurrent adds silently clobber each other. v0.0.4 collapses this into one `link({server, agent})` call. The server is caller-owned data.
+- **No pre-registration step.** The v0.0.3 flow was `add(name, spec)` then `link(name, agent)`. That two-step surface let the two calls drift out of sync, allowed manifest ghosts, and made concurrent adds silently clobber each other. v0.1.0 collapses this into one `link({server, agent})` call. The server is caller-owned data.
 - **Every operation composes.** `readState → plan* → applyPlan`. You can inspect the plan before writing.
 - **`disconnect()` is one primitive.** It reads state, unlinks one agent, drops the manifest entry only if no other agents remain linked. Never touches other agents' config files. The #63 bug is structurally impossible.
-- **The workspace manifest schema on disk is unchanged.** If you have a `manifest.json` written by v0.0.3, v0.0.4 reads it without migration.
+- **The workspace manifest schema on disk is unchanged.** If you have a `manifest.json` written by v0.0.3, v0.1.0 reads it without migration.
 
 ### Migration table
 
-| v0.0.3 (class API) | v0.0.4 (functional API) |
+| v0.0.3 (class API) | v0.1.0 (functional API) |
 |---|---|
 | `const mgr = createMcpManager({ workspaceDir })` | `const mgr = bind(workspaceDir)` (optional; the raw verbs also work) |
 | `await mgr.add({ name, spec })`<br>`await mgr.link({ serverName: name, agent })` | `const server = { name, spec }`<br>`await link(workspaceDir, { server, agent })` |
@@ -347,7 +354,7 @@ Under v0.0.4:
 | `await mgr.listLinks({ agents, serverNames })` | `await listLinks(workspaceDir, { agents, serverNames })` |
 | `await mgr.rescan()` | `await rescan(workspaceDir)` (see the [rescan section](#rescan-detecting-drift-between-manifest-and-disk) for report changes) |
 
-**No more `addServer`.** v0.0.3 required two calls to link a server for the first time: `mgr.add(...)` then `mgr.link(...)`. v0.0.4 does both in one `link({server, ...})`. Just build the server value inline and hand it to `link`. If you'd been storing the result of `mgr.add()` to reuse in later `mgr.link` calls, replace that with a caller-owned `const server = {name, spec}` variable.
+**No more `addServer`.** v0.0.3 required two calls to link a server for the first time: `mgr.add(...)` then `mgr.link(...)`. v0.1.0 does both in one `link({server, ...})`. Just build the server value inline and hand it to `link`. If you'd been storing the result of `mgr.add()` to reuse in later `mgr.link` calls, replace that with a caller-owned `const server = {name, spec}` variable.
 
 ### The disconnect pattern (the #63 fix)
 
@@ -365,7 +372,7 @@ if (links.length === 0) {
 Replace it with a single call:
 
 ```ts
-// v0.0.4 (structural fix)
+// v0.1.0 (structural fix)
 await disconnect(workspaceDir, {
   serverName,
   agent,
@@ -373,28 +380,28 @@ await disconnect(workspaceDir, {
 })
 ```
 
-The v0.0.4 `disconnect` reads the manifest once, computes the post-unlink links map, and only drops the manifest entry when that map is empty. It never touches any other agent's config file. If two callers race, each reads a fresh manifest at call time; the last writer wins on the manifest, and neither ever touches an unrelated agent's config.
+The v0.1.0 `disconnect` reads the manifest once, computes the post-unlink links map, and only drops the manifest entry when that map is empty. It never touches any other agent's config file. If two callers race, each reads a fresh manifest at call time; the last writer wins on the manifest, and neither ever touches an unrelated agent's config.
 
 ### Manager options
 
 v0.0.3 accepted per-manager configuration through `McpManagerOptions`. Those knobs are now per-call:
 
-| v0.0.3 `McpManagerOptions` field | v0.0.4 equivalent |
+| v0.0.3 `McpManagerOptions` field | v0.1.0 equivalent |
 |---|---|
 | `workspaceDir` | The first positional argument to every verb (or `bind(workspaceDir)` for sugar) |
 | `scope` | Pass `scope: 'system' \| 'project'` per call |
 | `projectRoot` | Pass `projectRoot: string` per call (required when `scope: 'project'`) |
 | `agentConfigPaths` | Pass `configPath: string` per call to override the resolved path for that call |
 
-Rationale: v0.0.3's per-manager `agentConfigPaths` map applied to every method call, which made mixed-scope operations awkward. v0.0.4's per-call `configPath` is one field with the same effect and no hidden state.
+Rationale: v0.0.3's per-manager `agentConfigPaths` map applied to every method call, which made mixed-scope operations awkward. v0.1.0's per-call `configPath` is one field with the same effect and no hidden state.
 
 ### Return shape diffs
 
-- **`listServers` → `list`**. v0.0.3 returned `InstalledServer[]`; v0.0.4 `list(workspaceDir)` returns `ManifestServerEntry[]`. Same fields (`{name, spec, addedAt, links}`), different type name. Existing consumer code that reads `.name`, `.spec`, `.addedAt`, `.links` needs no change.
-- **`listLinks`**. v0.0.3 returned `McpServerLink[]` with optional `drifted` / `broken` / `unmanaged` flags. v0.0.4 `listLinks(workspaceDir)` returns `ListedLink[]` with just `{serverName, agent, configPath}`. Drift flags moved to `rescan()`, which now returns a dedicated `{verified, drifted, missing}` report.
-- **`rescan`**. v0.0.3 `RescanResult` had four buckets: `verified` / `drifted` / `broken` / `unmanaged`. v0.0.4 `RescanReport` has three: `verified` / `drifted` / `missing`. The v0.0.3 `broken` bucket is now folded into `missing` (a manifest link with no on-disk entry). v0.0.3's `unmanaged` bucket (on-disk entries with no manifest record) is not currently scanned; that's a v0.0.5 candidate.
+- **`listServers` → `list`**. v0.0.3 returned `InstalledServer[]`; v0.1.0 `list(workspaceDir)` returns `ManifestServerEntry[]`. Same fields (`{name, spec, addedAt, links}`), different type name. Existing consumer code that reads `.name`, `.spec`, `.addedAt`, `.links` needs no change.
+- **`listLinks`**. v0.0.3 returned `McpServerLink[]` with optional `drifted` / `broken` / `unmanaged` flags. v0.1.0 `listLinks(workspaceDir)` returns `ListedLink[]` with just `{serverName, agent, configPath}`. Drift flags moved to `rescan()`, which now returns a dedicated `{verified, drifted, missing}` report.
+- **`rescan`**. v0.0.3 `RescanResult` had four buckets: `verified` / `drifted` / `broken` / `unmanaged`. v0.1.0 `RescanReport` has three: `verified` / `drifted` / `missing`. The v0.0.3 `broken` bucket is now folded into `missing` (a manifest link with no on-disk entry). v0.0.3's `unmanaged` bucket (on-disk entries with no manifest record) is not currently scanned; that's a v0.2.0 candidate.
 
-### New capabilities in v0.0.4
+### New capabilities in v0.1.0
 
 Available today; no equivalent in v0.0.3:
 
@@ -405,16 +412,16 @@ Available today; no equivalent in v0.0.3:
 
 ### Known behavioral differences
 
-- **One-step link.** v0.0.3 required `mgr.add()` before `mgr.link()`. v0.0.4 `link({server, agent})` does both. The manifest server entry is upserted as a side-effect of the link.
+- **One-step link.** v0.0.3 required `mgr.add()` before `mgr.link()`. v0.1.0 `link({server, agent})` does both. The manifest server entry is upserted as a side-effect of the link.
 - **Last-write-wins on the manifest spec.** If you call `link({server: A, agent: 'cursor'})` and later `link({server: A', agent: 'gemini'})` where `A.name === A'.name` but the specs differ, the manifest's spec updates to `A'`. Cursor's config still holds `A` on disk (stale) until you re-link cursor. Use `rescan()` to detect this class of drift.
 - **Trimmed names.** `link({server: {name: '  gh  ', ...}})` persists the trimmed key `'gh'`. v0.0.3 persisted the untrimmed value.
 - **Idempotent re-links skip the config write.** `link()` no longer touches mtime when the resulting content is identical. IDE file-watchers (Cursor, VS Code) no longer reload on idempotent re-runs.
 - **`exists: true` for empty files.** `readState` from `/lowlevel` returns `AgentFileState.exists = true` for existing empty files; v0.0.3 conflated existence with non-emptiness.
-- **`unlink` uses the manifest-recorded configPath.** If you `link({ configPath: X })` in v0.0.3 and later `unlink()` without a `configPath`, v0.0.3 rewrote the OS-default path (potentially skipping the file that had the entry). v0.0.4 looks up the recorded path from the manifest first.
+- **`unlink` uses the manifest-recorded configPath.** If you `link({ configPath: X })` in v0.0.3 and later `unlink()` without a `configPath`, v0.0.3 rewrote the OS-default path (potentially skipping the file that had the entry). v0.1.0 looks up the recorded path from the manifest first.
 
 ### If you consumed `McpManager` as a type
 
-v0.0.3 exported the `McpManager` interface for consumers to store the manager instance in class fields or React refs. v0.0.4 has no equivalent because the verbs are free functions. Two options:
+v0.0.3 exported the `McpManager` interface for consumers to store the manager instance in class fields or React refs. v0.1.0 has no equivalent because the verbs are free functions. Two options:
 
 ```ts
 // Option A: store the workspaceDir, call the free functions on demand.
@@ -482,7 +489,7 @@ Every write goes through atomic `<file>.tmp + rename`.
 
 ## Supported clients
 
-23 clients ship in v0.0.4 with hand-authored per-client shape declarations. See `src/_catalog/client-configs.ts` for the source of truth, including each entry's citation URLs.
+23 clients ship in v0.1.0 with hand-authored per-client shape declarations. See `src/_catalog/client-configs.ts` for the source of truth, including each entry's citation URLs.
 
 | Established | Well-documented | Additional |
 |---|---|---|

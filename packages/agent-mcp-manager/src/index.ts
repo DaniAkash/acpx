@@ -1,5 +1,5 @@
 /**
- * agent-mcp-manager public API (v0.0.4).
+ * agent-mcp-manager public API (v0.1.0, stable).
  *
  * The v0.0.3 class API (`createMcpManager`, `McpManager`) has been
  * removed. Consumers migrate to the functional verbs exported here or
@@ -76,4 +76,4 @@ export type {
   ServerManifest,
 } from './types.ts'
 
-export const VERSION = '0.0.4-rc.4'
+export const VERSION = '0.1.0'

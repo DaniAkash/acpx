@@ -102,7 +102,7 @@ export interface HttpShape {
   injects?: Record<string, unknown>
   /**
    * Whether the client advertises OAuth support. Recorded for future
-   * awareness; v0.0.4 does not act on it. Consumers thread bearer tokens
+   * awareness; v0.1.0 does not act on it. Consumers thread bearer tokens
    * via `spec.headers` today.
    */
   supportsOAuth?: boolean
