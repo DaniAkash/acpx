@@ -1,11 +1,8 @@
 import * as path from 'node:path'
+
+import { CATALOG, CATALOG_BY_ID } from './_catalog/client-configs.ts'
+import type { ClientConfig } from './_catalog/types.ts'
 import { anyExists, expandPaths, pickConfigPath } from './_internal/paths.ts'
-import {
-  CATALOG,
-  CATALOG_BY_ID,
-  type CatalogEntry,
-  type EmitterConfig,
-} from './_vendor/catalog.ts'
 import { AgentNotSupportedError, UnresolvedConfigPathError } from './errors.ts'
 import type { AgentId, AgentInfo, AgentScope, McpTransport } from './types.ts'
 
@@ -17,7 +14,6 @@ type Platform = (typeof PLATFORMS)[number]
 function currentPlatform(): Platform {
   const p = process.platform
   if (p === 'darwin' || p === 'linux' || p === 'win32') return p
-  // Fall back to linux conventions for unknown unixes.
   return 'linux'
 }
 
@@ -33,7 +29,7 @@ export function isAgentSupported(agent: string): agent is AgentId {
   return Object.hasOwn(CATALOG_BY_ID, agent)
 }
 
-export function getCatalogEntry(agent: AgentId): CatalogEntry {
+export function getCatalogEntry(agent: AgentId): ClientConfig {
   const entry = CATALOG_BY_ID[agent]
   if (!entry) throw new AgentNotSupportedError(agent)
   return entry
@@ -84,31 +80,49 @@ export async function resolveAgentMcpConfigPath(
 }
 
 /**
- * Resolve the emitter config and transport-capability set the library
- * uses for the given agent at the given scope. Project scope falls
- * back to system scope when the catalog entry does not declare a
- * project-specific override.
+ * The catalog's install-detection paths for this agent on the
+ * current OS, expanded (env vars substituted, unresolvable entries
+ * dropped). These are the directories / files that indicate the
+ * agent is present on the machine, not the config file path we
+ * would write to (that is `resolveAgentMcpConfigPath`). Callers
+ * pass the result to `anyExists` to answer "is this agent
+ * installed?".
+ *
+ * Empty when the catalog has no `installCheckPaths` entry for the
+ * current platform.
+ */
+export function resolveInstallCheckPaths(agent: AgentId): string[] {
+  const entry = getCatalogEntry(agent)
+  return expandPaths(pickOsList(entry.installCheckPaths))
+}
+
+/**
+ * Resolve the transport-capability set the library uses for the given
+ * agent at the given scope. Project scope falls back to system scope
+ * when the catalog entry does not declare a project-specific override.
+ * Consumers who need the write shapes call `getEmitter(entry, scope)`
+ * from `./emitters/index.ts` directly.
  */
 export function resolveAgentSurface(
   agent: AgentId,
   scope: AgentScope = 'system',
 ): {
-  emitterConfig: EmitterConfig
+  client: ClientConfig
   supportedTransports: ReadonlyArray<McpTransport>
 } {
   const entry = getCatalogEntry(agent)
   if (scope === 'project') {
     return {
-      emitterConfig: entry.projectEmitterConfig ?? entry.emitterConfig,
+      client: entry,
       supportedTransports:
-        entry.projectSupportedTransports ??
-        entry.supportedTransports ??
+        entry.supportedTransports.project ??
+        entry.supportedTransports.system ??
         ALL_TRANSPORTS,
     }
   }
   return {
-    emitterConfig: entry.emitterConfig,
-    supportedTransports: entry.supportedTransports ?? ALL_TRANSPORTS,
+    client: entry,
+    supportedTransports: entry.supportedTransports.system ?? ALL_TRANSPORTS,
   }
 }
 

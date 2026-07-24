@@ -169,6 +169,26 @@ jobs:
           config: cliff.toml
           args: --strip header ${{ steps.previous_tag.outputs.previous_tag }}..${{ github.ref_name }}
 
+      - name: Pick npm dist-tag from version
+        id: dist_tag
+        # SemVer pre-release versions (0.0.4-rc.1, 0.1.0-beta.2, etc.)
+        # must NOT land on the `latest` dist-tag; otherwise
+        # `npm i <pkg>` grabs the pre-release for all consumers. We
+        # route them onto their own channel based on the suffix.
+        # Stable releases (no `-` in the version) stay on `latest`.
+        run: |
+          VERSION=$(node -p "require('./${{ steps.pkg.outputs.dir }}/package.json').version")
+          case "$VERSION" in
+            *-alpha*) TAG=alpha ;;
+            *-beta*)  TAG=beta ;;
+            *-rc*)    TAG=rc ;;
+            *-next*)  TAG=next ;;
+            *-*)      TAG=next ;;
+            *)        TAG=latest ;;
+          esac
+          echo "Version $VERSION -> dist-tag $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
       - name: Publish to npm
         env:
           # `setup-node` writes a ~/.npmrc that interpolates
@@ -178,10 +198,11 @@ jobs:
         # `--access public` is required for unscoped or fresh-scoped
         # packages on the free tier. `--provenance` attaches an
         # OIDC-signed provenance attestation so npm shows the
-        # "built and signed on a cloud builder" badge.
+        # "built and signed on a cloud builder" badge. `--tag` routes
+        # pre-releases onto their own dist-tag (see previous step).
         run: |
           cd "${{ steps.pkg.outputs.dir }}"
-          npm publish --access public --provenance
+          npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
 
       - name: Create draft GitHub Release
         uses: softprops/action-gh-release@v2
@@ -189,6 +210,11 @@ jobs:
           # DRAFT — never auto-publish. Review the body in the GitHub
           # UI and click Publish when ready.
           draft: true
+          # `prerelease: true` for anything not on the `latest`
+          # dist-tag. GitHub badges the release as "Pre-release" so
+          # consumers browsing the Releases page know not to expect
+          # semver-stable behavior.
+          prerelease: ${{ steps.dist_tag.outputs.tag != 'latest' }}
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           # First release → literal "first release" body. Otherwise →

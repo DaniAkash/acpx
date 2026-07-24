@@ -175,6 +175,26 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "**/agent-mcp-manager/src/_catalog/client-configs.ts",
+        "**/agent-mcp-manager/src/planner/planner.ts",
+        "**/agent-mcp-manager/src/api.ts"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": {
+              "level": "error",
+              "options": { "maxAllowedComplexity": 50 }
+            }
+          },
+          "nursery": {
+            "noExcessiveLinesPerFile": "off"
+          }
+        }
+      }
     }
   ],
   "assist": {

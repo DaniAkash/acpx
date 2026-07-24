@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 
-import { McpManagerError, UnsupportedTransportError } from '../../src/errors.ts'
+import {
+  AgentNotInstalledError,
+  McpManagerError,
+  UnsupportedTransportError,
+} from '../../src/errors.ts'
 
 describe('UnsupportedTransportError', () => {
   test('extends McpManagerError so instanceof checks compose', () => {
@@ -32,5 +36,36 @@ describe('UnsupportedTransportError', () => {
     expect(err.message).toContain('claude-desktop')
     expect(err.message).toContain('"http"')
     expect(err.message).toContain('supported: stdio')
+  })
+})
+
+describe('AgentNotInstalledError', () => {
+  test('extends McpManagerError so instanceof checks compose', () => {
+    const err = new AgentNotInstalledError(
+      'cursor',
+      '/home/dev/.cursor/mcp.json',
+      '/home/dev/.cursor',
+    )
+    expect(err).toBeInstanceOf(McpManagerError)
+    expect(err.name).toBe('AgentNotInstalledError')
+    expect(err.agent).toBe('cursor')
+    expect(err.configPath).toBe('/home/dev/.cursor/mcp.json')
+    expect(err.parentDir).toBe('/home/dev/.cursor')
+  })
+
+  test('message includes the agent id, config path, and parent dir', () => {
+    const err = new AgentNotInstalledError(
+      'gemini',
+      '/tmp/x/.gemini/settings.json',
+      '/tmp/x/.gemini',
+    )
+    expect(err.message).toContain('gemini')
+    expect(err.message).toContain('/tmp/x/.gemini/settings.json')
+    expect(err.message).toContain('/tmp/x/.gemini')
+  })
+
+  test('message contains no em-dashes (repo writing rule)', () => {
+    const err = new AgentNotInstalledError('zed', '/a/b', '/a')
+    expect(err.message.includes('—')).toBe(false)
   })
 })
