@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { join } from 'node:path'
 import {
   isAgentSupported,
   listSupportedAgents,
@@ -27,7 +28,9 @@ describe('agent catalog', () => {
 
   test('resolves a new agent to its default skills directory', () => {
     expect(
-      resolveAgentSkillsDir('minimax-code').endsWith('.minimax/skills'),
+      resolveAgentSkillsDir('minimax-code').endsWith(
+        join('.minimax', 'skills'),
+      ),
     ).toBe(true)
   })
 
