@@ -9,6 +9,12 @@ const GIT_URL_RE =
 const HTTPS_GITHUB_RE =
   /^https:\/\/github\.com\/([^/]+)\/([^/.#]+)(?:\.git)?(?:#(.+))?$/i
 
+// Known shorthand aliases mapped to their canonical repo before parsing,
+// mirroring the upstream skills CLI.
+const SOURCE_ALIASES: Record<string, string> = {
+  'vercel-labs/vercel-skills': 'vercel-labs/agent-skills',
+}
+
 /**
  * Parse a user-supplied source string into a `SkillSource`. Accepted forms:
  *
@@ -21,7 +27,8 @@ const HTTPS_GITHUB_RE =
  * .well-known endpoints and GitLab URLs are deferred to a future release.
  */
 export function parseSourceInput(source: string): SkillSource {
-  const trimmed = source.trim()
+  const raw = source.trim()
+  const trimmed = SOURCE_ALIASES[raw] ?? raw
   if (!trimmed) throw new SourceParseError('Empty source string')
 
   // 1) GitHub https URL (with optional ref).
