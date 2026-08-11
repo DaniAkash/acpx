@@ -27,9 +27,9 @@ out to a CLI.
 `agent-skills-manager` builds on top of the data model and filesystem layout
 defined by the official [`skills`](https://github.com/vercel-labs/skills)
 CLI (`skills.sh`). Specifically, this package **vendors** a small set of
-internals from upstream — the 53-agent catalog (`agents.ts`), the
-`SKILL.md` frontmatter parser (`frontmatter.ts`), the `sanitizeName`
-helper, and the `AgentType` / `AgentConfig` types — into
+internals from upstream (the 76-agent catalog in `agents.ts`, the
+`SKILL.md` frontmatter parser in `frontmatter.ts`, the `sanitizeName`
+helper, and the `AgentType` / `AgentConfig` types) into
 [`src/_vendor/`](./src/_vendor) under their original MIT license.
 
 Why vendor instead of depending on `skills` as a package: the

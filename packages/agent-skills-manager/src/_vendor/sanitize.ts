@@ -1,4 +1,4 @@
-// Vendored from vercel-labs/skills@1.5.7 src/installer.ts (sanitizeName only).
+// Vendored from vercel-labs/skills@1.5.22 src/installer.ts (sanitizeName only).
 // See THIRD_PARTY_NOTICES.md for upstream attribution.
 
 /**

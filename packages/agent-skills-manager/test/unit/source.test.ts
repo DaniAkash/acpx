@@ -49,6 +49,22 @@ describe('parseSourceInput', () => {
     })
   })
 
+  test('ssh scheme git URL', () => {
+    expect(
+      parseSourceInput('ssh://git@github.com:7999/owner/repo.git'),
+    ).toEqual({
+      kind: 'gitUrl',
+      url: 'ssh://git@github.com:7999/owner/repo.git',
+    })
+  })
+
+  test('resolves the vercel-labs repo-rename shorthand alias', () => {
+    expect(parseSourceInput('vercel-labs/vercel-skills')).toEqual({
+      kind: 'github',
+      ownerRepo: 'vercel-labs/agent-skills',
+    })
+  })
+
   test('local absolute path', () => {
     const here = process.cwd()
     expect(parseSourceInput(here)).toEqual({ kind: 'local', path: here })

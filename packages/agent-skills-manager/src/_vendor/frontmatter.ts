@@ -1,4 +1,4 @@
-// Vendored from vercel-labs/skills@1.5.7 src/frontmatter.ts.
+// Vendored from vercel-labs/skills@1.5.22 src/frontmatter.ts.
 // See THIRD_PARTY_NOTICES.md for upstream attribution.
 import { parse as parseYaml } from 'yaml'
 
