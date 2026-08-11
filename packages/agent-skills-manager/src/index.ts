@@ -40,4 +40,4 @@ export type {
   UnlinkSkillResult,
 } from './types.ts'
 
-export const VERSION = '0.0.0'
+export const VERSION = '0.0.2'
