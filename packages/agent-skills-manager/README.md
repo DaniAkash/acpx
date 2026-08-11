@@ -5,10 +5,10 @@
 
 [![npm](https://img.shields.io/npm/v/agent-skills-manager.svg)](https://www.npmjs.com/package/agent-skills-manager)
 
-> [!WARNING]
-> **Alpha software.** This package is in active development. The public
-> API may change between minor versions without notice until `1.0.0`.
-> Pin exact versions; expect rough edges.
+> [!NOTE]
+> **Stable.** As of `1.0.0` the public API is stable and ready for
+> production use. Breaking changes follow semantic versioning and land
+> only in major releases.
 
 `agent-skills-manager` is built around seven primitives — `add`, `link`,
 `unlink`, `remove`, `listSkills`, `listLinks`, `rescan` — backed by a
