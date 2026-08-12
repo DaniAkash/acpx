@@ -1,6 +1,6 @@
 {
   "name": "acpx-ai-harness",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Vercel AI SDK v7 HarnessV1 adapter for acpx, bring any ACP agent (Claude, Codex, Gemini, Copilot, Cursor) to the AI SDK Harnesses ecosystem.",
   "license": "MIT",
   "author": "Dani Akash",
@@ -53,7 +53,7 @@
   },
   "peerDependencies": {
     "@ai-sdk/harness": ">=1.0.0-canary.10",
-    "acpx": ">=0.8.0",
+    "acpx": ">=0.13.0",
     "ai": ">=7.0.0-beta.0"
   },
   "dependencies": {
@@ -66,7 +66,7 @@
     "@ai-sdk/provider-utils": "5.0.0-canary.48",
     "@ai-sdk/sandbox-vercel": "1.0.0-canary.10",
     "@types/ws": "^8",
-    "acpx": "^0.8.0",
+    "acpx": "^0.13.0",
     "acpx-test-helpers": "workspace:*",
     "bunup": "^0.16.31",
     "typescript": "^6.0.3"
