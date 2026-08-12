@@ -45,7 +45,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "^0.21.0"
+    "@agentclientprotocol/sdk": "^0.29.0"
   },
   "peerDependencies": {
     "acpx": ">=0.7.0"
@@ -56,8 +56,8 @@
     }
   },
   "devDependencies": {
-    "acpx": "^0.7.0",
-    "bunup": "^0.16.31",
+    "acpx": "^0.13.0",
+    "bunup": "^0.16.32",
     "typescript": "^6.0.3"
   },
   "publishConfig": {

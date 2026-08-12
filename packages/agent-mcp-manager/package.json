@@ -58,7 +58,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "bunup": "^0.16.31",
+    "bunup": "^0.16.32",
     "typescript": "^6.0.3"
   },
   "publishConfig": {
