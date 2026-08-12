@@ -45,8 +45,9 @@ describe('resolveAgentCommandFromId', () => {
       createAgentRegistry: () => { list: () => readonly string[] }
     }
     const known = mod.createAgentRegistry().list()
-    if (known.length === 0) return
-    const id = known.includes('claude') ? 'claude' : known[0]!
+    const first = known[0]
+    if (!first) return
+    const id = known.includes('claude') ? 'claude' : first
     const argv = await resolveAgentCommandFromId(id)
     expect(argv.length).toBeGreaterThan(0)
     if (id === 'claude') {
