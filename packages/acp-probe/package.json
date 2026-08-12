@@ -1,6 +1,6 @@
 {
   "name": "acp-probe",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "description": "Probe any ACP-compatible agent for its capabilities (models, modes, configOptions, prompt capabilities, auth methods, MCP transports). No real prompt required; no token cost.",
   "license": "MIT",
   "author": "Dani Akash",
