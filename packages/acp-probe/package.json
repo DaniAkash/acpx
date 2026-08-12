@@ -1,6 +1,6 @@
 {
   "name": "acp-probe",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Probe any ACP-compatible agent for its capabilities (models, modes, configOptions, prompt capabilities, auth methods, MCP transports). No real prompt required; no token cost.",
   "license": "MIT",
   "author": "Dani Akash",
@@ -45,10 +45,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "^0.21.0"
+    "@agentclientprotocol/sdk": "^1.3.0"
   },
   "peerDependencies": {
-    "acpx": ">=0.7.0"
+    "acpx": ">=0.13.0"
   },
   "peerDependenciesMeta": {
     "acpx": {
@@ -56,7 +56,7 @@
     }
   },
   "devDependencies": {
-    "acpx": "^0.7.0",
+    "acpx": "^0.13.0",
     "bunup": "^0.16.31",
     "typescript": "^6.0.3"
   },

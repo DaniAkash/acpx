@@ -75,7 +75,7 @@ export interface ProbedConfigOption {
   id: string
   name: string
   description?: string
-  category?: 'mode' | 'model' | 'thought_level' | string
+  category?: 'mode' | 'model' | 'model_config' | 'thought_level' | string
   type: 'select' | 'boolean'
   /**
    * For `type === 'select'`: the currently-selected value id (string).
@@ -94,8 +94,8 @@ export interface ReasoningInfo {
 }
 
 export interface ModelConfigInfo {
-  /** Always `'model'` — surfaced for symmetry with `ReasoningInfo`. */
-  configId: 'model'
+  /** The configOption id to pass to `setConfigOption` (usually `'model'`). */
+  configId: string
   /** Ids that `setConfigOption('model', X)` will accept on this agent. */
   values: string[]
   /** Currently-selected value at probe time, if the agent advertised one. */
@@ -161,16 +161,15 @@ export interface AgentProbeResult {
   capabilities: AgentCapabilities
   authMethods: AuthMethod[]
   /**
-   * The agent's declarative `session/new.models.availableModels[]`.
+   * The models the agent's settable model picker exposes.
    *
-   * Best for display / browsing. **These ids are NOT guaranteed to be
-   * valid `setConfigOption('model', X)` inputs** — codex-acp, for
-   * example, advertises compound `<model>/<effort>` ids here that
-   * `setConfigOption` rejects (silently — the next prompt finishes with
-   * `finishReason: "error"` and no error frame).
-   *
-   * For the settable list, read `modelConfig.values` (or the full
-   * picker metadata via `configOptions.find(o => o.id === 'model')`).
+   * ACP 1.x removed the separate declarative
+   * `session/new.models.availableModels` list, so this is now sourced from
+   * the model-selector config option: the ids ARE valid
+   * `setConfigOption('model', X)` inputs (the same values as
+   * `modelConfig.values`), carrying the per-model `name` / `description`
+   * the selector advertises. Empty when the agent exposes no model picker
+   * (e.g. gemini).
    */
   models: ProbedModel[]
   modes: ProbedMode[]
