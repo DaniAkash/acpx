@@ -7,10 +7,10 @@
 
 [![npm](https://img.shields.io/npm/v/acp-probe.svg)](https://www.npmjs.com/package/acp-probe)
 
-> [!WARNING]
-> **Alpha software.** This package is in active development. The public
-> API may change between minor versions without notice until `1.0.0`.
-> Pin exact versions; expect rough edges.
+> [!NOTE]
+> **Stable.** As of `1.0.0` the public API is stable and ready for
+> production use. Breaking changes follow semantic versioning and land
+> only in major releases.
 
 ## What it does
 
