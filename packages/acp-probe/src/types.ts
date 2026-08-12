@@ -96,7 +96,7 @@ export interface ReasoningInfo {
 export interface ModelConfigInfo {
   /** The configOption id to pass to `setConfigOption` (usually `'model'`). */
   configId: string
-  /** Ids that `setConfigOption('model', X)` will accept on this agent. */
+  /** Ids that `setConfigOption(configId, X)` will accept on this agent. */
   values: string[]
   /** Currently-selected value at probe time, if the agent advertised one. */
   currentValue?: string
@@ -166,7 +166,7 @@ export interface AgentProbeResult {
    * ACP 1.x removed the separate declarative
    * `session/new.models.availableModels` list, so this is now sourced from
    * the model-selector config option: the ids ARE valid
-   * `setConfigOption('model', X)` inputs (the same values as
+   * `setConfigOption(modelConfig.configId, X)` inputs (the same values as
    * `modelConfig.values`), carrying the per-model `name` / `description`
    * the selector advertises. Empty when the agent exposes no model picker
    * (e.g. gemini).
