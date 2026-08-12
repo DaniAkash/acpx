@@ -14,7 +14,7 @@
     },
     "packages/acp-probe": {
       "name": "acp-probe",
-      "version": "0.0.3",
+      "version": "1.0.0",
       "dependencies": {
         "@agentclientprotocol/sdk": "^1.3.0",
       },
@@ -32,7 +32,7 @@
     },
     "packages/acpx-ai-harness": {
       "name": "acpx-ai-harness",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "ws": "^8.20.1",
         "zod": "3.25.76",
@@ -43,24 +43,24 @@
         "@ai-sdk/provider-utils": "5.0.0-canary.48",
         "@ai-sdk/sandbox-vercel": "1.0.0-canary.10",
         "@types/ws": "^8",
-        "acpx": "^0.8.0",
+        "acpx": "^0.13.0",
         "acpx-test-helpers": "workspace:*",
         "bunup": "^0.16.31",
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "@ai-sdk/harness": ">=1.0.0-canary.10",
-        "acpx": ">=0.8.0",
+        "acpx": ">=0.13.0",
         "ai": ">=7.0.0-beta.0",
       },
     },
     "packages/acpx-ai-provider": {
       "name": "acpx-ai-provider",
-      "version": "0.0.6",
+      "version": "0.0.7",
       "devDependencies": {
         "@ai-sdk/provider": "4.0.0-beta.14",
         "@ai-sdk/provider-utils": "5.0.0-beta.30",
-        "acpx": "^0.8.0",
+        "acpx": "^0.13.0",
         "acpx-test-helpers": "workspace:*",
         "ai": "7.0.0-beta.116",
         "bunup": "^0.16.31",
@@ -68,7 +68,7 @@
         "zod": "^4.4.3",
       },
       "peerDependencies": {
-        "acpx": ">=0.8.0",
+        "acpx": ">=0.13.0",
         "ai": ">=7.0.0-beta.0",
       },
     },
@@ -77,12 +77,12 @@
       "version": "0.0.0",
       "devDependencies": {
         "@ai-sdk/provider-utils": "5.0.0-beta.30",
-        "acpx": "^0.8.0",
+        "acpx": "^0.13.0",
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "@ai-sdk/provider-utils": ">=4.0.0",
-        "acpx": ">=0.8.0",
+        "acpx": ">=0.13.0",
       },
     },
     "packages/agent-mcp-manager": {
@@ -131,7 +131,7 @@
   "packages": {
     "@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@1.3.0", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-i3h/efaeuMUFAO1HSfo97QZQnnvMd7wWBYtBsdL6UMZg3a78sk3Ffya5Xu7C7tYsXomXoDXJBAzQF2PcFKAhIQ=="],
 
-    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.0-canary.106", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-7WqAFpPC9ayks7vrbvatodXuQF46n0q8wsRAK0Y5Stm3kA8bAZ5Y3iVnDIIQKsQ4gzoM2mygRNw+4HYKCyR51Q=="],
+    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.0-canary.107", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-BPmARy2rc0ChkmoMhrmHa+L5lg7HWO8BZ1bMEWx3m3wH6lSy7a2CFu4T28PC2qaCPuWgpu5+PnSWC9eMpZh9rQ=="],
 
     "@ai-sdk/harness": ["@ai-sdk/harness@1.0.0-canary.10", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48", "ai": "7.0.0-canary.174" }, "peerDependencies": { "ws": "^8.20.1" }, "optionalPeers": ["ws"] }, "sha512-ISRHt8osZYTscIK/wfdaq1tyXn79oBrrnVNZxXMc5GRmCYU9P5tTBWI3s9YewFy9K7KbR8jbD8KW4E/Vo58Vrw=="],
 
@@ -391,7 +391,7 @@
 
     "agent-skills-manager": ["agent-skills-manager@workspace:packages/agent-skills-manager"],
 
-    "ai": ["ai@7.0.0-canary.174", "", { "dependencies": { "@ai-sdk/gateway": "4.0.0-canary.106", "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-JEVQeUhuHnNdw7QyPLVRzJV6AkHMYlaXgGLClmqzwoWh1C91qdEkMx4rAeHmy1KN4xKpDqnmkkOqGn7I4S5Oqw=="],
+    "ai": ["ai@7.0.0-canary.176", "", { "dependencies": { "@ai-sdk/gateway": "4.0.0-canary.107", "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-0a+PeTou1uLouzrlLaEZNyBj21oFyYCI1BeOrP9uLJ2YGW6tsUAGME6zetfDdbl/bouIc4neUA36sH7mNjNp1g=="],
 
     "ai-sdk-microsandbox": ["ai-sdk-microsandbox@workspace:packages/ai-sdk-microsandbox"],
 
@@ -537,6 +537,8 @@
 
     "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
+    "@ai-sdk/harness/ai": ["ai@7.0.0-canary.174", "", { "dependencies": { "@ai-sdk/gateway": "4.0.0-canary.106", "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-JEVQeUhuHnNdw7QyPLVRzJV6AkHMYlaXgGLClmqzwoWh1C91qdEkMx4rAeHmy1KN4xKpDqnmkkOqGn7I4S5Oqw=="],
+
     "@ai-sdk/harness-codex/@ai-sdk/harness": ["@ai-sdk/harness@1.0.0-canary.13", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48", "ai": "7.0.0-canary.176" }, "peerDependencies": { "ws": "^8.20.1" }, "optionalPeers": ["ws"] }, "sha512-SCifKEH8VmOOLTWVZSsvxPbOHWd7a2puJMP1jS0LAmqxQwVm+DtPoPdW9iWAe8fORkhhRK2TzbBFi+JtbsDbrA=="],
 
     "@vercel/sandbox/@workflow/serde": ["@workflow/serde@4.1.0-beta.2", "", {}, "sha512-8kkeoQKLDaKXefjV5dbhBj2aErfKp1Mc4pb6tj8144cF+Em5SPbyMbyLCHp+BVrFfFVCBluCtMx+jjvaFVZGww=="],
@@ -547,13 +549,9 @@
 
     "acpx/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
-    "acpx-ai-harness/acpx": ["acpx@0.8.0", "", { "dependencies": { "@agentclientprotocol/sdk": "^0.21.1", "commander": "^14.0.3", "skillflag": "^0.1.4", "tsx": "^4.22.0", "zod": "^4.4.3" }, "bin": { "acpx": "dist/cli.js" } }, "sha512-mI8ma3sDz8QfI2c40iiOAQ3iklpdv0XB7YFieOIcZZWw8dBTGsbFn4qqgbKQjDBX8S/yIWiKvmqi5j/L8c2kUQ=="],
-
     "acpx-ai-provider/@ai-sdk/provider": ["@ai-sdk/provider@4.0.0-beta.14", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-SMijtjVHs38n0dMkTcNuGrnStiF76OhAqS0R+ZX4iXUnuPPyTxQoVcF8Xuf2AoBB5rqndTId5FVT05bgqD5KsA=="],
 
     "acpx-ai-provider/@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@5.0.0-beta.30", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.14", "@standard-schema/spec": "^1.1.0", "@workflow/serde": "4.1.0", "eventsource-parser": "^3.0.8" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-X3AxTsFJZr9Mw32SncWJA4/ShU8NA/XjhoallCYdcdQZ2gZZ/cIDyJJ6pNh1aBhicRNHv2ndgI6w/H2NGNIjOA=="],
-
-    "acpx-ai-provider/acpx": ["acpx@0.8.0", "", { "dependencies": { "@agentclientprotocol/sdk": "^0.21.1", "commander": "^14.0.3", "skillflag": "^0.1.4", "tsx": "^4.22.0", "zod": "^4.4.3" }, "bin": { "acpx": "dist/cli.js" } }, "sha512-mI8ma3sDz8QfI2c40iiOAQ3iklpdv0XB7YFieOIcZZWw8dBTGsbFn4qqgbKQjDBX8S/yIWiKvmqi5j/L8c2kUQ=="],
 
     "acpx-ai-provider/ai": ["ai@7.0.0-beta.116", "", { "dependencies": { "@ai-sdk/gateway": "4.0.0-beta.67", "@ai-sdk/provider": "4.0.0-beta.14", "@ai-sdk/provider-utils": "5.0.0-beta.30" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-xLVY+YU0sKmQ7zVU6y/6vCFn7o8HHNNgGTK789rqxxmcwSIau/RsmoCzXp/1c6sppA+PU6i4Uh5aCwFAQmjwEA=="],
 
@@ -561,50 +559,14 @@
 
     "acpx-test-helpers/@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@5.0.0-beta.30", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.14", "@standard-schema/spec": "^1.1.0", "@workflow/serde": "4.1.0", "eventsource-parser": "^3.0.8" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-X3AxTsFJZr9Mw32SncWJA4/ShU8NA/XjhoallCYdcdQZ2gZZ/cIDyJJ6pNh1aBhicRNHv2ndgI6w/H2NGNIjOA=="],
 
-    "acpx-test-helpers/acpx": ["acpx@0.8.0", "", { "dependencies": { "@agentclientprotocol/sdk": "^0.21.1", "commander": "^14.0.3", "skillflag": "^0.1.4", "tsx": "^4.22.0", "zod": "^4.4.3" }, "bin": { "acpx": "dist/cli.js" } }, "sha512-mI8ma3sDz8QfI2c40iiOAQ3iklpdv0XB7YFieOIcZZWw8dBTGsbFn4qqgbKQjDBX8S/yIWiKvmqi5j/L8c2kUQ=="],
-
     "agent-skills-manager/yaml": ["yaml@2.8.4", "", { "bin": { "yaml": "bin.mjs" } }, "sha512-ml/JPOj9fOQK8RNnWojA67GbZ0ApXAUlN2UQclwv2eVgTgn7O9gg9o7paZWKMp4g0H3nTLtS9LVzhkpOFIKzog=="],
 
     "ai-sdk-microsandbox/@ai-sdk/harness": ["@ai-sdk/harness@1.0.0-canary.13", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48", "ai": "7.0.0-canary.176" }, "peerDependencies": { "ws": "^8.20.1" }, "optionalPeers": ["ws"] }, "sha512-SCifKEH8VmOOLTWVZSsvxPbOHWd7a2puJMP1jS0LAmqxQwVm+DtPoPdW9iWAe8fORkhhRK2TzbBFi+JtbsDbrA=="],
 
-    "@ai-sdk/harness-codex/@ai-sdk/harness/ai": ["ai@7.0.0-canary.176", "", { "dependencies": { "@ai-sdk/gateway": "4.0.0-canary.107", "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-0a+PeTou1uLouzrlLaEZNyBj21oFyYCI1BeOrP9uLJ2YGW6tsUAGME6zetfDdbl/bouIc4neUA36sH7mNjNp1g=="],
-
-    "acpx-ai-harness/acpx/@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@0.21.1", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-ZTLH+o9QxcZDLX/9ww+W7C2iExnXFM+vD/uGFVSlR61Kzj9FaxUqBC6Rv/kwgA7qVWYUEI9c5ZNqCuO9PM4rKg=="],
-
-    "acpx-ai-harness/acpx/commander": ["commander@14.0.3", "", {}, "sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw=="],
-
-    "acpx-ai-harness/acpx/skillflag": ["skillflag@0.1.4", "", { "dependencies": { "@clack/prompts": "^1.0.1", "tar-stream": "^3.1.7" }, "bin": { "skillflag": "dist/bin/skillflag.js", "skill-install": "dist/bin/skill-install.js" } }, "sha512-egFg+XCF5sloOWdtzxZivTX7n4UDj5pxQoY33wbT8h+YSDjMQJ76MZUg2rXQIBXmIDtlZhLgirS1g/3R5/qaHA=="],
-
-    "acpx-ai-harness/acpx/tsx": ["tsx@4.22.0", "", { "dependencies": { "esbuild": "~0.28.0" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "bin": { "tsx": "dist/cli.mjs" } }, "sha512-8ccZMPD69s1AbKXx0C5ddTNZfNjwV04iIKgjZmKfKxMynEtSYcK0Lh7iQFh53fI5Yu4pb9usgAiqyPmEONaALg=="],
-
-    "acpx-ai-harness/acpx/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
-
-    "acpx-ai-provider/acpx/@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@0.21.1", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-ZTLH+o9QxcZDLX/9ww+W7C2iExnXFM+vD/uGFVSlR61Kzj9FaxUqBC6Rv/kwgA7qVWYUEI9c5ZNqCuO9PM4rKg=="],
-
-    "acpx-ai-provider/acpx/commander": ["commander@14.0.3", "", {}, "sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw=="],
-
-    "acpx-ai-provider/acpx/skillflag": ["skillflag@0.1.4", "", { "dependencies": { "@clack/prompts": "^1.0.1", "tar-stream": "^3.1.7" }, "bin": { "skillflag": "dist/bin/skillflag.js", "skill-install": "dist/bin/skill-install.js" } }, "sha512-egFg+XCF5sloOWdtzxZivTX7n4UDj5pxQoY33wbT8h+YSDjMQJ76MZUg2rXQIBXmIDtlZhLgirS1g/3R5/qaHA=="],
-
-    "acpx-ai-provider/acpx/tsx": ["tsx@4.22.0", "", { "dependencies": { "esbuild": "~0.28.0" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "bin": { "tsx": "dist/cli.mjs" } }, "sha512-8ccZMPD69s1AbKXx0C5ddTNZfNjwV04iIKgjZmKfKxMynEtSYcK0Lh7iQFh53fI5Yu4pb9usgAiqyPmEONaALg=="],
+    "@ai-sdk/harness/ai/@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.0-canary.106", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-7WqAFpPC9ayks7vrbvatodXuQF46n0q8wsRAK0Y5Stm3kA8bAZ5Y3iVnDIIQKsQ4gzoM2mygRNw+4HYKCyR51Q=="],
 
     "acpx-ai-provider/ai/@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.0-beta.67", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.14", "@ai-sdk/provider-utils": "5.0.0-beta.30", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-qG1a0wwjLL+oVI1LOdpEs74PRl3yNPF5i0CgiuXTbU0Bb+JyUFuSwCJiQvlsIylu/mNpav3Mb+ODj15EF6/NZA=="],
 
     "acpx-test-helpers/@ai-sdk/provider-utils/@ai-sdk/provider": ["@ai-sdk/provider@4.0.0-beta.14", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-SMijtjVHs38n0dMkTcNuGrnStiF76OhAqS0R+ZX4iXUnuPPyTxQoVcF8Xuf2AoBB5rqndTId5FVT05bgqD5KsA=="],
-
-    "acpx-test-helpers/acpx/@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@0.21.1", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-ZTLH+o9QxcZDLX/9ww+W7C2iExnXFM+vD/uGFVSlR61Kzj9FaxUqBC6Rv/kwgA7qVWYUEI9c5ZNqCuO9PM4rKg=="],
-
-    "acpx-test-helpers/acpx/commander": ["commander@14.0.3", "", {}, "sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw=="],
-
-    "acpx-test-helpers/acpx/skillflag": ["skillflag@0.1.4", "", { "dependencies": { "@clack/prompts": "^1.0.1", "tar-stream": "^3.1.7" }, "bin": { "skillflag": "dist/bin/skillflag.js", "skill-install": "dist/bin/skill-install.js" } }, "sha512-egFg+XCF5sloOWdtzxZivTX7n4UDj5pxQoY33wbT8h+YSDjMQJ76MZUg2rXQIBXmIDtlZhLgirS1g/3R5/qaHA=="],
-
-    "acpx-test-helpers/acpx/tsx": ["tsx@4.22.0", "", { "dependencies": { "esbuild": "~0.28.0" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "bin": { "tsx": "dist/cli.mjs" } }, "sha512-8ccZMPD69s1AbKXx0C5ddTNZfNjwV04iIKgjZmKfKxMynEtSYcK0Lh7iQFh53fI5Yu4pb9usgAiqyPmEONaALg=="],
-
-    "acpx-test-helpers/acpx/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
-
-    "ai-sdk-microsandbox/@ai-sdk/harness/ai": ["ai@7.0.0-canary.176", "", { "dependencies": { "@ai-sdk/gateway": "4.0.0-canary.107", "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-0a+PeTou1uLouzrlLaEZNyBj21oFyYCI1BeOrP9uLJ2YGW6tsUAGME6zetfDdbl/bouIc4neUA36sH7mNjNp1g=="],
-
-    "@ai-sdk/harness-codex/@ai-sdk/harness/ai/@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.0-canary.107", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-BPmARy2rc0ChkmoMhrmHa+L5lg7HWO8BZ1bMEWx3m3wH6lSy7a2CFu4T28PC2qaCPuWgpu5+PnSWC9eMpZh9rQ=="],
-
-    "ai-sdk-microsandbox/@ai-sdk/harness/ai/@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.0-canary.107", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-canary.18", "@ai-sdk/provider-utils": "5.0.0-canary.48", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-BPmARy2rc0ChkmoMhrmHa+L5lg7HWO8BZ1bMEWx3m3wH6lSy7a2CFu4T28PC2qaCPuWgpu5+PnSWC9eMpZh9rQ=="],
   }
 }
