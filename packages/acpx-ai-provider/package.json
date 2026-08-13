@@ -57,7 +57,7 @@
     "acpx": "^0.13.0",
     "acpx-test-helpers": "workspace:*",
     "ai": "7.0.0-beta.116",
-    "bunup": "^0.16.31",
+    "bunup": "^0.16.32",
     "typescript": "^6.0.3",
     "zod": "^4.4.3"
   },

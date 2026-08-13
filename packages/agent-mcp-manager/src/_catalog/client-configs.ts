@@ -1,4 +1,3 @@
-// fallow-ignore-next-line unused-files
 /**
  * Populated MCP client configuration catalog.
  *

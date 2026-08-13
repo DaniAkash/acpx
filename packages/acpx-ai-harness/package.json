@@ -57,7 +57,7 @@
     "ai": ">=7.0.0-beta.0"
   },
   "dependencies": {
-    "ws": "^8.20.1",
+    "ws": "^8.21.3",
     "zod": "3.25.76"
   },
   "devDependencies": {
@@ -68,7 +68,7 @@
     "@types/ws": "^8",
     "acpx": "^0.13.0",
     "acpx-test-helpers": "workspace:*",
-    "bunup": "^0.16.31",
+    "bunup": "^0.16.32",
     "typescript": "^6.0.3"
   },
   "publishConfig": {
