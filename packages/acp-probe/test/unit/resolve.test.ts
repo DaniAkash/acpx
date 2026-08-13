@@ -1,9 +1,24 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { AgentResolveError } from '../../src/errors.ts'
 import {
   resolveAgentCommandFromId,
   splitArgv,
 } from '../../src/resolve-command.ts'
+
+// acpx 0.13's real agent registry depends on machine config and is empty (or
+// its methods are absent) in a bare environment such as CI, so mock
+// `acpx/runtime` to exercise the resolver deterministically everywhere. The
+// stub also covers both `resolve()` return shapes: acpx 0.13 structured argv
+// (string[]) and a legacy command string.
+mock.module('acpx/runtime', () => ({
+  createAgentRegistry: () => ({
+    list: (): string[] => ['claude', 'legacy'],
+    resolve: (id: string): string | string[] =>
+      id === 'claude'
+        ? ['npx', '-y', '@agentclientprotocol/claude-agent-acp']
+        : 'my-agent --acp',
+  }),
+}))
 
 describe('splitArgv', () => {
   test('simple whitespace split', () => {
@@ -37,13 +52,14 @@ describe('splitArgv', () => {
 })
 
 describe('resolveAgentCommandFromId', () => {
-  test('returns argv for a known acpx agent id when acpx is installed', async () => {
-    // `acpx` is a devDep of this package and so is in node_modules during
-    // tests. The resolver should succeed.
+  test('returns acpx structured argv (string[]) verbatim', async () => {
     const argv = await resolveAgentCommandFromId('claude')
-    expect(argv.length).toBeGreaterThan(0)
-    // Spawn command must reference the claude ACP adapter.
-    expect(argv.some((a) => a.includes('claude'))).toBe(true)
+    expect(argv).toEqual(['npx', '-y', '@agentclientprotocol/claude-agent-acp'])
+  })
+
+  test('shell-splits a legacy command string from resolve()', async () => {
+    const argv = await resolveAgentCommandFromId('legacy')
+    expect(argv).toEqual(['my-agent', '--acp'])
   })
 
   test('throws AgentResolveError with unknown_agent for a bogus id', async () => {

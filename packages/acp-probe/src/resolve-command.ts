@@ -51,7 +51,7 @@ export async function resolveAgentCommandFromId(id: string): Promise<string[]> {
       { cause: 'unknown_agent' },
     )
   }
-  let raw: string
+  let raw: string | string[]
   try {
     raw = registry.resolve(id)
   } catch (err) {
@@ -60,7 +60,9 @@ export async function resolveAgentCommandFromId(id: string): Promise<string[]> {
       { cause: 'unknown_agent', original: err },
     )
   }
-  return splitArgv(raw)
+  // acpx's resolve() may return structured argv (string[]) or a legacy
+  // command string. Use structured argv verbatim; shell-split the string.
+  return Array.isArray(raw) ? [...raw] : splitArgv(raw)
 }
 
 /**

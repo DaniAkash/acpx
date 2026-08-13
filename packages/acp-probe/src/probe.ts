@@ -269,7 +269,7 @@ export async function probeAgent(
   await killChild(child, killedByUs)
 
   const capabilities = normalizeCapabilities(initialize)
-  const models = normalizeModels(newSession)
+  const models = normalizeModels(configOptions)
   const modes = normalizeModes(newSession)
   const reasoning = deriveReasoning(configOptions)
   const modelConfig = deriveModelConfig(configOptions)
