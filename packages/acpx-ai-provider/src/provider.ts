@@ -5,6 +5,7 @@ import type {
   AcpRuntime,
   AcpRuntimeAvailableCommand,
   AcpRuntimeDoctorReport,
+  AcpRuntimeEvent,
   AcpRuntimeHandle,
   AcpRuntimeOptions,
   AcpRuntimeSessionModels,
@@ -171,12 +172,16 @@ export class AcpxProvider {
 
   /**
    * Latest `usage_update` snapshot observed for this session, or
-   * `undefined` if no usage event has fired yet. Synchronous —
+   * `undefined` if no usage event has fired yet. Synchronous;
    * does not spawn an agent or query the runtime. Callers wanting
    * push updates should subscribe to `provider.events.on('usage', ...)`.
    */
   getUsage(sessionKey?: string): AcpxUsageSnapshot | undefined {
-    return this.lastUsage.get(sessionKey ?? this.resolveSessionKey({}))
+    const snapshot = this.lastUsage.get(
+      sessionKey ?? this.resolveSessionKey({}),
+    )
+    // Defensive copy so callers cannot mutate the provider's stored state.
+    return snapshot ? { ...snapshot } : undefined
   }
 
   /**
@@ -186,16 +191,20 @@ export class AcpxProvider {
    * for push updates.
    */
   getAvailableCommands(sessionKey?: string): AcpRuntimeAvailableCommand[] {
-    return this.lastCommands.get(sessionKey ?? this.resolveSessionKey({})) ?? []
+    const commands = this.lastCommands.get(
+      sessionKey ?? this.resolveSessionKey({}),
+    )
+    // Defensive copy so callers cannot mutate the provider's stored state.
+    return (commands ?? []).map((c) => ({ ...c }))
   }
 
-  /** Internal — called by the language model when an event arrives. */
+  /** Internal: called by the language model when an event arrives. */
   recordUsage(snapshot: AcpxUsageSnapshot): void {
     this.lastUsage.set(snapshot.sessionKey, snapshot)
     this.events.emit('usage', snapshot)
   }
 
-  /** Internal — called by the language model when an event arrives. */
+  /** Internal: called by the language model when an event arrives. */
   recordAvailableCommands(
     sessionKey: string,
     commands: AcpRuntimeAvailableCommand[],
@@ -205,11 +214,36 @@ export class AcpxProvider {
   }
 
   /**
+   * Route a raw runtime event to `provider.events` the same way a
+   * language-model turn does. Used by `runSlashCommand`, whose turn does
+   * not pass through the language model's event translator.
+   */
+  private routeLiveEvent(event: AcpRuntimeEvent, sessionKey: string): void {
+    if (event.type !== 'status') return
+    if (event.tag === 'usage_update') {
+      this.recordUsage({
+        used: event.used,
+        size: event.size,
+        cost: event.cost,
+        breakdown: event.breakdown,
+        at: Date.now(),
+        sessionKey,
+      })
+    } else if (
+      event.tag === 'available_commands_update' &&
+      event.availableCommands
+    ) {
+      this.recordAvailableCommands(sessionKey, event.availableCommands)
+    }
+  }
+
+  /**
    * Send a one-shot prompt whose text is a slash command (e.g.
-   * `"/compact"`). The active agent interprets the slash on its side —
-   * ACP itself has no compact verb. Drains the event iterator so that
-   * any `usage_update` / `available_commands_update` events fired by
-   * the command propagate to provider subscribers naturally.
+   * `"/compact"`). The active agent interprets the slash on its side;
+   * ACP itself has no compact verb. Drains the event iterator and routes
+   * any `usage_update` / `available_commands_update` events the command
+   * fires to `provider.events` subscribers, so (for example) the
+   * post-compaction usage snapshot reaches the caller.
    */
   async runSlashCommand(input: {
     name: string
@@ -218,7 +252,7 @@ export class AcpxProvider {
     timeoutMs?: number
     signal?: AbortSignal
   }): Promise<void> {
-    const { handle } = await this.ensureHandle({
+    const { handle, sessionKey } = await this.ensureHandle({
       sessionKey: input.sessionKey,
       agent: input.agent,
     })
@@ -230,9 +264,10 @@ export class AcpxProvider {
       timeoutMs: input.timeoutMs,
       signal: input.signal,
     })
-    for await (const _event of turn.events) {
-      // No-op: subscribers consume via provider.events; we just need
-      // the iterator drained so the turn completes.
+    for await (const event of turn.events) {
+      // Route the live signals the same way a doStream/doGenerate turn
+      // does, so subscribers still see them on a slash-command-only turn.
+      this.routeLiveEvent(event, sessionKey)
     }
     const result = await turn.result
     if (result.status === 'failed') {
@@ -246,9 +281,9 @@ export class AcpxProvider {
    * Convenience wrapper around `runSlashCommand` that resolves a
    * `/compact`-like command name from the agent's advertised list. The
    * agent must have emitted at least one `available_commands_update`
-   * before this is called — typically that arrives during the first
-   * turn or right after `prepare()`. Throws if no compact-like command
-   * is advertised.
+   * before this is called; that flows through during a `doStream` /
+   * `doGenerate` turn, not after `prepare()` alone. Throws if no
+   * compact-like command is advertised.
    */
   async compact(
     opts: { sessionKey?: string; agent?: string } = {},
@@ -262,7 +297,7 @@ export class AcpxProvider {
     if (!cmd) {
       throw new Error(
         `active agent does not advertise a compact command on session "${sessionKey}". ` +
-          'Wait for an available_commands_update event (typically after ensureHandle or the first turn) before calling compact().',
+          'Wait for an available_commands_update event (it flows during a doStream/doGenerate turn, not after prepare()/ensureHandle alone) before calling compact().',
       )
     }
     const name = cmd.name.startsWith('/') ? cmd.name : `/${cmd.name}`

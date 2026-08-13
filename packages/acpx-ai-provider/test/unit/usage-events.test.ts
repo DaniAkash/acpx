@@ -172,6 +172,41 @@ describe('AcpxProvider — runSlashCommand', () => {
     expect(call?.text).toBe('/compact')
   })
 
+  test('routes usage_update fired during the turn to provider.events (e.g. post-compaction)', async () => {
+    const runtime = new MockAcpRuntime({
+      turnScripts: [
+        {
+          events: [
+            acpEvent.usage(500, 200_000, {
+              breakdown: {
+                inputTokens: 300,
+                outputTokens: 200,
+                totalTokens: 500,
+              },
+            }),
+          ],
+          result: acpResult.completed('end_turn'),
+        },
+      ],
+    })
+    const provider = createAcpxProvider({
+      agent: 'claude',
+      cwd: '/tmp/test',
+      sessionKey: 'test-session',
+      runtime,
+    })
+
+    const observed: unknown[] = []
+    provider.events.on('usage', (snapshot) => observed.push(snapshot))
+
+    await provider.runSlashCommand({ name: '/compact' })
+
+    expect(observed).toHaveLength(1)
+    expect((observed[0] as { used: number }).used).toBe(500)
+    // The synchronous read reflects it too.
+    expect(provider.getUsage('test-session')?.used).toBe(500)
+  })
+
   test('throws an AcpxError-ish error if the slash command turn fails', async () => {
     const runtime = new MockAcpRuntime({
       turnScripts: [

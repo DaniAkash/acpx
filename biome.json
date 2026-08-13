@@ -177,7 +177,10 @@
       }
     },
     {
-      "includes": ["**/acpx-ai-provider/src/convert-events.ts"],
+      "includes": [
+        "**/acpx-ai-provider/src/convert-events.ts",
+        "**/acpx-ai-provider/src/provider.ts"
+      ],
       "linter": {
         "rules": {
           "nursery": {
