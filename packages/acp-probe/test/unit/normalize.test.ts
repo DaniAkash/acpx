@@ -62,9 +62,6 @@ describe('normalize — claude (claude-agent-acp 0.31.4)', () => {
   test('models + modes + configOptions + reasoning', async () => {
     const sess = await loadNewSession('claude')
 
-    expect(normalizeModels(sess)).toHaveLength(3)
-    expect(normalizeModels(sess)[0]?.id).toBe('default')
-
     expect(normalizeModes(sess).map((m) => m.id)).toEqual([
       'auto',
       'default',
@@ -76,6 +73,11 @@ describe('normalize — claude (claude-agent-acp 0.31.4)', () => {
 
     const options = normalizeConfigOptions(sess)
     expect(options.map((o) => o.id)).toEqual(['mode', 'model', 'effort'])
+
+    // models are derived from the model config option (ACP 1.x dropped the
+    // separate declarative availableModels list).
+    expect(normalizeModels(options)).toHaveLength(3)
+    expect(normalizeModels(options)[0]?.id).toBe('default')
 
     const reasoning = deriveReasoning(options)
     expect(reasoning).toEqual({
@@ -102,13 +104,18 @@ describe('normalize — codex (codex-acp 0.12.0)', () => {
     expect(normalizeAuthMethods(init).map((m) => m.id)).toContain('chatgpt')
   })
 
-  test('24 models including gpt-5.5/{low,medium,high,xhigh}; reasoning_effort surface', async () => {
+  test('models are the 6 bare settable ids (no fabricated compound ids); reasoning_effort surface', async () => {
     const sess = await loadNewSession('codex')
-    const models = normalizeModels(sess)
-    expect(models.length).toBe(24)
-    expect(models.map((m) => m.id)).toContain('gpt-5.5/medium')
+    const options = normalizeConfigOptions(sess)
+    const models = normalizeModels(options)
+    // ACP 1.x sources models from the model config option, so the 24
+    // fabricated `<model>/<effort>` compound ids are gone; only the 6 bare
+    // settable ids remain.
+    expect(models.length).toBe(6)
+    expect(models.every((m) => !m.id.includes('/'))).toBe(true)
+    expect(models.map((m) => m.id)).toContain('gpt-5.5')
 
-    const reasoning = deriveReasoning(normalizeConfigOptions(sess))
+    const reasoning = deriveReasoning(options)
     expect(reasoning).toEqual({
       configId: 'reasoning_effort',
       values: ['low', 'medium', 'high', 'xhigh'],
@@ -116,7 +123,7 @@ describe('normalize — codex (codex-acp 0.12.0)', () => {
     })
   })
 
-  test('deriveModelConfig surfaces the 6 bare model ids — disjoint from availableModels', async () => {
+  test('deriveModelConfig surfaces the 6 bare settable model ids', async () => {
     const sess = await loadNewSession('codex')
     const options = normalizeConfigOptions(sess)
 
@@ -134,8 +141,7 @@ describe('normalize — codex (codex-acp 0.12.0)', () => {
       currentValue: 'gpt-5.5',
     })
 
-    // None of the settable ids carry the `<model>/<effort>` suffix that
-    // pollutes availableModels[]; this is the whole point of the field.
+    // None of the settable ids carry the `<model>/<effort>` compound suffix.
     expect(modelConfig?.values.every((v) => !v.includes('/'))).toBe(true)
   })
 })

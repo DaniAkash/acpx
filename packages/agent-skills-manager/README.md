@@ -5,10 +5,10 @@
 
 [![npm](https://img.shields.io/npm/v/agent-skills-manager.svg)](https://www.npmjs.com/package/agent-skills-manager)
 
-> [!WARNING]
-> **Alpha software.** This package is in active development. The public
-> API may change between minor versions without notice until `1.0.0`.
-> Pin exact versions; expect rough edges.
+> [!NOTE]
+> **Stable.** As of `1.0.0` the public API is stable and ready for
+> production use. Breaking changes follow semantic versioning and land
+> only in major releases.
 
 `agent-skills-manager` is built around seven primitives — `add`, `link`,
 `unlink`, `remove`, `listSkills`, `listLinks`, `rescan` — backed by a
@@ -27,9 +27,9 @@ out to a CLI.
 `agent-skills-manager` builds on top of the data model and filesystem layout
 defined by the official [`skills`](https://github.com/vercel-labs/skills)
 CLI (`skills.sh`). Specifically, this package **vendors** a small set of
-internals from upstream — the 53-agent catalog (`agents.ts`), the
-`SKILL.md` frontmatter parser (`frontmatter.ts`), the `sanitizeName`
-helper, and the `AgentType` / `AgentConfig` types — into
+internals from upstream (the 76-agent catalog in `agents.ts`, the
+`SKILL.md` frontmatter parser in `frontmatter.ts`, the `sanitizeName`
+helper, and the `AgentType` / `AgentConfig` types) into
 [`src/_vendor/`](./src/_vendor) under their original MIT license.
 
 Why vendor instead of depending on `skills` as a package: the

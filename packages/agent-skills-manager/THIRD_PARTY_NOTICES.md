@@ -5,14 +5,13 @@
 ## skills (vercel-labs/skills)
 
 - Source: https://github.com/vercel-labs/skills
-- Version: 1.5.7
+- Version: 1.5.22
 - License: MIT
 - Files derived from this project (located under `src/_vendor/`):
-  - `agents.ts` — copied verbatim with import-path adjustments
-  - `sanitize.ts` — `sanitizeName` extracted from upstream `src/installer.ts`
-  - `frontmatter.ts` — copied verbatim with import-path adjustments
-  - `types.ts` — `AgentType` union and `AgentConfig` interface extracted
-    from upstream `src/types.ts`
+  - `agents.ts`: copied from upstream `src/agents.ts` with import-path adjustments and explicit parameter/return types on exported helpers (required by the DTS build)
+  - `sanitize.ts`: `sanitizeName` extracted from upstream `src/installer.ts`
+  - `frontmatter.ts`: copied from upstream `src/frontmatter.ts` with import-path adjustments
+  - `types.ts`: `AgentType` union and `AgentConfig` interface extracted from upstream `src/types.ts`
 
 ### MIT License
 

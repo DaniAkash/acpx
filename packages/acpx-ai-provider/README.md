@@ -39,7 +39,7 @@ bun add acpx-ai-provider acpx ai
 npm i acpx-ai-provider acpx ai
 ```
 
-`acpx` and `ai` are peer dependencies. Requires `ai` ≥ 7.0.0-beta and `acpx` ≥ 0.8.0.
+`acpx` and `ai` are peer dependencies. Requires `ai` ≥ 7.0.0-beta and `acpx` ≥ 0.13.0.
 
 > **AI SDK v7 support.** The provider implements `LanguageModelV2`, which AI SDK 7 accepts directly via its `LanguageModel = LanguageModelV2 | LanguageModelV3 | LanguageModelV4` union. You'll see a one-time `"specificationVersion" is used in a compatibility mode` warning during the first call — this is by design and harmless. A future minor release may migrate the provider to `LanguageModelV4` to drop the warning.
 

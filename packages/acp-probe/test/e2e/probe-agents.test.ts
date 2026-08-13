@@ -94,10 +94,11 @@ const EXPECTATIONS: Record<ProbeAgent, (r: AgentProbeResult) => void> = {
     expect(r.reasoning?.values).toContain('low')
     expect(r.modelConfig?.configId).toBe('model')
     expect(r.modelConfig?.values.length ?? 0).toBeGreaterThan(0)
-    // The whole point of issue #31 — codex's settable ids are the bare
-    // model names, never the compound `<model>/<effort>` ids that
-    // pollute availableModels[].
+    // codex's settable ids are the bare model names, never the compound
+    // `<model>/<effort>` ids. In ACP 1.x these are the only model ids (the
+    // declarative model list was removed), so r.models mirrors them.
     expect(r.modelConfig?.values.every((v) => !v.includes('/'))).toBe(true)
+    expect(r.models.every((m) => !m.id.includes('/'))).toBe(true)
     expect(r.supportsConfigOption).toBe(true)
   },
   gemini(r) {
@@ -106,7 +107,9 @@ const EXPECTATIONS: Record<ProbeAgent, (r: AgentProbeResult) => void> = {
     expect(r.agentInfo?.name).toBe('gemini-cli')
     // Gemini is unique in advertising audio support.
     expect(r.capabilities.promptCapabilities.audio).toBe(true)
-    expect(r.models.length).toBeGreaterThan(0)
+    // ACP 1.x sources models from the model config option; gemini exposes
+    // none, so no models surface (the declarative list was removed).
+    expect(r.models).toEqual([])
     expect(r.modes.length).toBeGreaterThan(0)
     // No configOptions → no reasoning surface, no settable model picker,
     // set_config_option absent.

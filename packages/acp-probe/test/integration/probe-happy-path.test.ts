@@ -54,11 +54,15 @@ describe('probeAgent — happy path against fake-agent driven by fixtures', () =
     expect(result.agent.durationMs).toBeGreaterThanOrEqual(0)
   })
 
-  test('codex fixture surfaces 24 models and reasoning_effort id', async () => {
+  test('codex fixture surfaces the 6 settable models and reasoning_effort id', async () => {
     const result = await probeWithFake('codex')
 
     expect(result.error).toBeUndefined()
-    expect(result.models.length).toBe(24)
+    // ACP 1.x: models come from the model config option, so result.models
+    // mirrors modelConfig.values (the 6 bare settable ids), not the old 24
+    // fabricated `<model>/<effort>` compound ids.
+    expect(result.models.length).toBe(6)
+    expect(result.models.every((m) => !m.id.includes('/'))).toBe(true)
     expect(result.reasoning?.configId).toBe('reasoning_effort')
     expect(result.modelConfig?.values).toEqual([
       'gpt-5.5',

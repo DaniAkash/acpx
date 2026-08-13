@@ -58,10 +58,11 @@ export class InvalidServerSpecError extends McpManagerError {
 /**
  * Raised by `link()` when the requested transport is not one this agent's
  * config file actually accepts. The most common case is passing
- * `transport: 'http'` (or `'sse'`) for `claude-desktop` or `codex`, both
- * of which only parse stdio-shaped entries on disk. The `hint` field
- * names the `mcp-remote` wrapper pattern so callers can produce a
- * stdio-shaped spec the agent will accept.
+ * `transport: 'http'` (or `'sse'`) for `claude-desktop`, whose parser
+ * only validates stdio-shaped entries on disk; codex now accepts http
+ * directly but still rejects sse. The `hint` field names the
+ * `mcp-remote` wrapper pattern so callers can produce a stdio-shaped
+ * spec the agent will accept.
  */
 export class UnsupportedTransportError extends McpManagerError {
   readonly agent: AgentId
@@ -89,5 +90,34 @@ export class UnresolvedConfigPathError extends McpManagerError {
     super(`Cannot resolve config path for agent "${agent}": ${reason}`)
     this.name = 'UnresolvedConfigPathError'
     this.agent = agent
+  }
+}
+
+/**
+ * Thrown by `link()` (and `planLink` at the pure layer) when the target
+ * agent's config file location is not writable-safely: neither the file
+ * nor its parent directory exists on disk. The agent has either not been
+ * installed or has been installed but never launched, so the config
+ * directory does not exist yet.
+ *
+ * Consumers precheck with `isInstalled({agents})` to avoid this error;
+ * or catch it and surface the install prompt to the user.
+ */
+export class AgentNotInstalledError extends McpManagerError {
+  readonly agent: AgentId
+  readonly configPath: string
+  readonly parentDir: string
+  constructor(agent: AgentId, configPath: string, parentDir: string) {
+    super(
+      `Agent "${agent}" does not appear to be installed on this machine. ` +
+        `The library needs "${configPath}" or its parent directory "${parentDir}" ` +
+        `to exist before it can write an MCP entry. ` +
+        `Install ${agent} and launch it at least once, or pass an explicit ` +
+        `"configPath" to write to a custom location.`,
+    )
+    this.name = 'AgentNotInstalledError'
+    this.agent = agent
+    this.configPath = configPath
+    this.parentDir = parentDir
   }
 }

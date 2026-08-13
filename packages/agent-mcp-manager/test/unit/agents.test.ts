@@ -10,14 +10,30 @@ import { UnresolvedConfigPathError } from '../../src/errors.ts'
 import type { McpTransport } from '../../src/types.ts'
 
 describe('agents catalog', () => {
-  test('listSupportedAgents returns the 7 v0.1 agents', () => {
+  test('listSupportedAgents returns the full 23-client roster (v0.0.4)', () => {
     expect([...listSupportedAgents()].sort()).toEqual([
+      'amazon-bedrock',
+      'amazonq',
+      'antigravity',
+      'boltai',
       'claude-code',
       'claude-desktop',
+      'cline',
       'codex',
       'cursor',
+      'enconvo',
       'gemini',
+      'goose',
+      'kiro',
+      'librechat',
+      'opencode',
+      'roocode',
+      'tome',
+      'trae',
       'vscode',
+      'vscode-insiders',
+      'windsurf',
+      'witsy',
       'zed',
     ])
   })
@@ -73,8 +89,10 @@ describe('agent transport-capability surface', () => {
     ])
   })
 
-  test('codex is stdio-only', () => {
-    expect(resolveAgentSurface('codex').supportedTransports).toEqual(['stdio'])
+  test('codex supports stdio + http (no sse)', () => {
+    expect(
+      [...resolveAgentSurface('codex').supportedTransports].sort(),
+    ).toEqual(['http', 'stdio'])
   })
 
   test('cursor accepts all three transports', () => {

@@ -26,11 +26,23 @@ export async function atomicWriteFile(
   }
 }
 
-export async function readFileOrEmpty(file: string): Promise<string> {
+/**
+ * Read a file's contents plus a flag saying whether the file existed on
+ * disk. An empty file on disk still returns `exists: true`; only ENOENT
+ * returns `exists: false`. Used by `readState` so `AgentFileState.exists`
+ * matches the JSDoc contract instead of conflating "existed" with
+ * "non-empty".
+ */
+export async function readFileWithExistence(
+  file: string,
+): Promise<{ content: string; exists: boolean }> {
   try {
-    return await fsp.readFile(file, 'utf8')
+    const content = await fsp.readFile(file, 'utf8')
+    return { content, exists: true }
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return ''
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return { content: '', exists: false }
+    }
     throw err
   }
 }

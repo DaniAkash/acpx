@@ -101,14 +101,21 @@ export function normalizeAuthMethods(raw: InitializeResponse): AuthMethod[] {
   })
 }
 
-export function normalizeModels(raw: NewSessionResponse | null): ProbedModel[] {
-  if (!raw?.models) return []
-  return raw.models.availableModels.map((m) => ({
-    id: m.modelId,
-    ...(typeof m.name === 'string' ? { name: m.name } : {}),
-    ...(typeof m.description === 'string'
-      ? { description: m.description }
-      : {}),
+/**
+ * The models the agent's settable picker exposes. ACP 1.x removed the
+ * separate declarative `session/new.models.availableModels` list, so the
+ * model-selector config option is now the single source; its option ids
+ * are exactly the values `setConfigOption` accepts.
+ */
+export function normalizeModels(
+  configOptions: ProbedConfigOption[],
+): ProbedModel[] {
+  const opt = findModelOption(configOptions)
+  if (!opt?.options) return []
+  return opt.options.map((v) => ({
+    id: v.value,
+    ...(v.name !== undefined ? { name: v.name } : {}),
+    ...(v.description !== undefined ? { description: v.description } : {}),
   }))
 }
 
@@ -201,13 +208,29 @@ export function deriveReasoning(
   }
 }
 
+/**
+ * Find the settable model-selector config option. Agents identify it by
+ * `id === 'model'` or by category (`'model'`, or ACP 1.x's `'model_config'`).
+ */
+function findModelOption(
+  configOptions: ProbedConfigOption[],
+): ProbedConfigOption | undefined {
+  return configOptions.find(
+    (o) =>
+      o.type === 'select' &&
+      (o.id === 'model' ||
+        o.category === 'model' ||
+        o.category === 'model_config'),
+  )
+}
+
 export function deriveModelConfig(
   configOptions: ProbedConfigOption[],
 ): ModelConfigInfo | null {
-  const opt = configOptions.find((o) => o.id === 'model' && o.type === 'select')
+  const opt = findModelOption(configOptions)
   if (!opt?.options) return null
   return {
-    configId: 'model',
+    configId: opt.id,
     values: opt.options.map((v) => v.value),
     ...(typeof opt.currentValue === 'string'
       ? { currentValue: opt.currentValue }

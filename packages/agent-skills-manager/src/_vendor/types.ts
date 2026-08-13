@@ -1,10 +1,13 @@
-// Vendored from vercel-labs/skills@1.5.7 src/types.ts. See THIRD_PARTY_NOTICES.md
+// Vendored from vercel-labs/skills@1.5.22 src/types.ts. See THIRD_PARTY_NOTICES.md
 // for upstream attribution. Trimmed to the subset agent-skills-manager actually uses.
 
 export type AgentType =
   | 'aider-desk'
   | 'amp'
   | 'antigravity'
+  | 'antigravity-cli'
+  | 'astrbot'
+  | 'autohand-code'
   | 'augment'
   | 'bob'
   | 'claude-code'
@@ -24,37 +27,55 @@ export type AgentType =
   | 'devin'
   | 'dexto'
   | 'droid'
+  | 'eve'
   | 'firebender'
   | 'forgecode'
   | 'gemini-cli'
   | 'github-copilot'
   | 'goose'
+  | 'grok'
   | 'hermes-agent'
+  | 'inference-sh'
   | 'iflow-cli'
+  | 'jazz'
   | 'junie'
   | 'kilo'
-  | 'kimi-cli'
+  | 'kimchi'
+  | 'kimi-code-cli'
   | 'kiro-cli'
   | 'kode'
+  | 'lingma'
+  | 'loaf'
   | 'mcpjam'
+  | 'minimax-code'
   | 'mistral-vibe'
+  | 'moxby'
   | 'mux'
   | 'neovate'
   | 'opencode'
   | 'openhands'
+  | 'ona'
   | 'pi'
   | 'qoder'
+  | 'qoder-cn'
   | 'qwen-code'
   | 'replit'
+  | 'reasonix'
   | 'roo'
   | 'rovodev'
   | 'tabnine-cli'
+  | 'terramind'
+  | 'tinycloud'
   | 'trae'
   | 'trae-cn'
   | 'warp'
   | 'windsurf'
+  | 'zed'
+  | 'zcode'
   | 'zencoder'
+  | 'zenflow'
   | 'pochi'
+  | 'promptscript'
   | 'adal'
   | 'universal'
 
@@ -67,4 +88,6 @@ export interface AgentConfig {
   detectInstalled: () => Promise<boolean>
   /** Whether to show this agent in the universal agents list. Defaults to true. */
   showInUniversalList?: boolean
+  /** Whether to display this universal agent in the interactive locked section. Defaults to true. */
+  showInUniversalPrompt?: boolean
 }

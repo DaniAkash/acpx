@@ -1,16 +1,9 @@
-import type {
-  CatalogEntry,
-  EmitterConfig,
-  JsonEmitterConfig,
-  TomlCodexEmitterConfig,
-} from '../_vendor/catalog.ts'
+import type { ClientConfig } from '../_catalog/types.ts'
 import type { AgentScope, McpServerSpec } from '../types.ts'
-import { jsonAdd, jsonRead, jsonRemove } from './json-emitter.ts'
-import {
-  tomlCodexAdd,
-  tomlCodexRead,
-  tomlCodexRemove,
-} from './toml-codex-emitter.ts'
+import { jsonAdd, jsonRead, jsonRemove } from './json.ts'
+import { resolveShapes } from './shape.ts'
+import { tomlAdd, tomlRead, tomlRemove } from './toml.ts'
+import { yamlAdd, yamlRead, yamlRemove } from './yaml.ts'
 
 export interface EmitterIO {
   read(raw: string): string[]
@@ -18,33 +11,36 @@ export interface EmitterIO {
   remove(raw: string, name: string): string
 }
 
-function pickEmitterConfig(
-  entry: CatalogEntry,
-  scope: AgentScope,
-): EmitterConfig {
-  if (scope === 'project' && entry.projectEmitterConfig) {
-    return entry.projectEmitterConfig
-  }
-  return entry.emitterConfig
-}
-
+/**
+ * Pick the read/add/remove trio for the given client and scope. The
+ * format (json / jsonc / yaml / toml) selects the serialiser; the
+ * per-client stdio + http shapes drive every field-name / injection /
+ * tag decision. The returned functions close over the resolved shapes,
+ * so callers only pass raw file contents, name, and spec.
+ */
 export function getEmitter(
-  entry: CatalogEntry,
+  client: ClientConfig,
   scope: AgentScope = 'system',
 ): EmitterIO {
-  if (entry.emitterId === 'json') {
-    const config = pickEmitterConfig(entry, scope) as JsonEmitterConfig
+  const shapes = resolveShapes(client, scope)
+  if (client.format === 'yaml') {
     return {
-      read: (raw) => jsonRead(raw, config),
-      add: (raw, name, spec) => jsonAdd(raw, name, spec, config),
-      remove: (raw, name) => jsonRemove(raw, name, config),
+      read: (raw) => yamlRead(raw, shapes),
+      add: (raw, name, spec) => yamlAdd(raw, name, spec, shapes),
+      remove: (raw, name) => yamlRemove(raw, name, shapes),
     }
   }
-  // toml-codex
-  const config = pickEmitterConfig(entry, scope) as TomlCodexEmitterConfig
+  if (client.format === 'toml') {
+    return {
+      read: (raw) => tomlRead(raw, shapes),
+      add: (raw, name, spec) => tomlAdd(raw, name, spec, shapes),
+      remove: (raw, name) => tomlRemove(raw, name, shapes),
+    }
+  }
+  // json and jsonc share the same emitter (jsonc-parser handles both).
   return {
-    read: (raw) => tomlCodexRead(raw, config),
-    add: (raw, name, spec) => tomlCodexAdd(raw, name, spec, config),
-    remove: (raw, name) => tomlCodexRemove(raw, name, config),
+    read: (raw) => jsonRead(raw, shapes),
+    add: (raw, name, spec) => jsonAdd(raw, name, spec, shapes),
+    remove: (raw, name) => jsonRemove(raw, name, shapes),
   }
 }

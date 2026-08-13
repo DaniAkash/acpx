@@ -70,6 +70,25 @@ describe('add() with a local source', () => {
     expect(skillMdContent).toContain('name: live')
   })
 
+  test('discovers skills nested under category directories', async () => {
+    const src = join(tmp.root, 'multi')
+    await writeSkillSource(join(src, 'category-a', 'skill-1'), {
+      name: 'skill-1',
+      description: 'first',
+    })
+    await writeSkillSource(join(src, 'category-b', 'skill-2'), {
+      name: 'skill-2',
+      description: 'second',
+    })
+
+    const mgr = createSkillsManager({ workspaceDir: tmp.workspaceDir })
+    const result = await mgr.add({ source: src })
+
+    expect(result.added).toHaveLength(2)
+    const names = result.added.map((a) => a.name).sort()
+    expect(names).toEqual(['skill-1', 'skill-2'])
+  })
+
   test('failed source (no SKILL.md) returns a failed result entry', async () => {
     const src = join(tmp.root, 'empty-src')
     await (await import('node:fs/promises')).mkdir(src, { recursive: true })
