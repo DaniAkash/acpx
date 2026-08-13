@@ -1,9 +1,24 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { AgentResolveError } from '../../src/errors.ts'
 import {
   resolveAgentCommandFromId,
   splitArgv,
 } from '../../src/resolve-command.ts'
+
+// acpx 0.13's real agent registry depends on machine config and is empty (or
+// its methods are absent) in a bare environment such as CI, so mock
+// `acpx/runtime` to exercise the resolver deterministically everywhere. The
+// stub also covers both `resolve()` return shapes: acpx 0.13 structured argv
+// (string[]) and a legacy command string.
+mock.module('acpx/runtime', () => ({
+  createAgentRegistry: () => ({
+    list: (): string[] => ['claude', 'legacy'],
+    resolve: (id: string): string | string[] =>
+      id === 'claude'
+        ? ['npx', '-y', '@agentclientprotocol/claude-agent-acp']
+        : 'my-agent --acp',
+  }),
+}))
 
 describe('splitArgv', () => {
   test('simple whitespace split', () => {
@@ -37,22 +52,14 @@ describe('splitArgv', () => {
 })
 
 describe('resolveAgentCommandFromId', () => {
-  test('returns argv for whatever agent id the installed acpx registers', async () => {
-    // Which ids acpx knows depends on its version and environment config:
-    // acpx 0.13's registry is empty in a bare environment (e.g. CI), so
-    // resolve an id acpx actually reports rather than assuming 'claude'.
-    const mod = (await import('acpx/runtime' as never)) as {
-      createAgentRegistry: () => { list: () => readonly string[] }
-    }
-    const known = mod.createAgentRegistry().list()
-    const first = known[0]
-    if (!first) return
-    const id = known.includes('claude') ? 'claude' : first
-    const argv = await resolveAgentCommandFromId(id)
-    expect(argv.length).toBeGreaterThan(0)
-    if (id === 'claude') {
-      expect(argv.some((a) => a.includes('claude'))).toBe(true)
-    }
+  test('returns acpx structured argv (string[]) verbatim', async () => {
+    const argv = await resolveAgentCommandFromId('claude')
+    expect(argv).toEqual(['npx', '-y', '@agentclientprotocol/claude-agent-acp'])
+  })
+
+  test('shell-splits a legacy command string from resolve()', async () => {
+    const argv = await resolveAgentCommandFromId('legacy')
+    expect(argv).toEqual(['my-agent', '--acp'])
   })
 
   test('throws AgentResolveError with unknown_agent for a bogus id', async () => {
