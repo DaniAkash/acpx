@@ -49,7 +49,8 @@ export interface AcpxProviderEvents {
 export class AcpxProvider {
   readonly settings: AcpxProviderSettings
   readonly generateId: () => string
-  readonly events = new EventEmitter<AcpxProviderEvents>()
+  readonly events: EventEmitter<AcpxProviderEvents> =
+    new EventEmitter<AcpxProviderEvents>()
 
   private runtimeInstance: AcpRuntime | null
   private readonly handles = new Map<string, ResolvedHandle>()
