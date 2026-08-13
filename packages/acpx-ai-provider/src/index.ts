@@ -23,19 +23,23 @@ export {
   stripMarkdownFences,
 } from './json-output.ts'
 export { AcpxLanguageModel } from './language-model.ts'
-export type { EnsureHandleResult } from './provider.ts'
+export type { AcpxProviderEvents, EnsureHandleResult } from './provider.ts'
 export { AcpxProvider, createAcpxProvider } from './provider.ts'
 export type {
   AcpPermissionDecision,
   AcpPermissionRequest,
   AcpRuntime,
+  AcpRuntimeAvailableCommand,
   AcpRuntimeDoctorReport,
   AcpRuntimeEvent,
   AcpRuntimeHandle,
   AcpRuntimeSessionModels,
+  AcpRuntimeSessionUsage,
   AcpRuntimeStatus,
   AcpRuntimeTurnResult,
   AcpRuntimeTurnResultError,
+  AcpRuntimeUsageBreakdown,
+  AcpRuntimeUsageCost,
   AcpxLanguageModelOptions,
   AcpxMcpServerConfig,
   AcpxMcpServerHttp,
@@ -44,6 +48,7 @@ export type {
   AcpxPermissionMode,
   AcpxProviderSettings,
   AcpxSessionMode,
+  AcpxUsageSnapshot,
   SessionAgentOptions,
   SystemPromptOption,
 } from './types.ts'

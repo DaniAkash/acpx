@@ -1,7 +1,10 @@
 import type {
+  AcpRuntimeAvailableCommand,
   AcpRuntimeEvent,
   AcpRuntimeTurnResult,
   AcpRuntimeTurnResultError,
+  AcpRuntimeUsageBreakdown,
+  AcpRuntimeUsageCost,
   AcpSessionUpdateTag,
 } from 'acpx/runtime'
 
@@ -18,6 +21,9 @@ type StatusOpts = {
   tag?: AcpSessionUpdateTag
   used?: number
   size?: number
+  cost?: AcpRuntimeUsageCost
+  breakdown?: AcpRuntimeUsageBreakdown
+  availableCommands?: AcpRuntimeAvailableCommand[]
 }
 type ErrorOpts = { code?: string; retryable?: boolean }
 
@@ -49,11 +55,28 @@ export const acpEvent = {
       tag: opts.tag,
       used: opts.used,
       size: opts.size,
+      cost: opts.cost,
+      breakdown: opts.breakdown,
+      availableCommands: opts.availableCommands,
     }
   },
 
-  usage(used: number, size?: number): AcpRuntimeEvent {
-    return acpEvent.status({ tag: 'usage_update', used, size })
+  usage(
+    used: number,
+    size?: number,
+    extra: {
+      cost?: AcpRuntimeUsageCost
+      breakdown?: AcpRuntimeUsageBreakdown
+    } = {},
+  ): AcpRuntimeEvent {
+    return acpEvent.status({ tag: 'usage_update', used, size, ...extra })
+  },
+
+  availableCommands(commands: AcpRuntimeAvailableCommand[]): AcpRuntimeEvent {
+    return acpEvent.status({
+      tag: 'available_commands_update',
+      availableCommands: commands,
+    })
   },
 
   plan(text: string): AcpRuntimeEvent {

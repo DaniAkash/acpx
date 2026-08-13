@@ -2,13 +2,17 @@ import type {
   AcpPermissionDecision,
   AcpPermissionRequest,
   AcpRuntime,
+  AcpRuntimeAvailableCommand,
   AcpRuntimeDoctorReport,
   AcpRuntimeEvent,
   AcpRuntimeHandle,
   AcpRuntimeSessionModels,
+  AcpRuntimeSessionUsage,
   AcpRuntimeStatus,
   AcpRuntimeTurnResult,
   AcpRuntimeTurnResultError,
+  AcpRuntimeUsageBreakdown,
+  AcpRuntimeUsageCost,
   SessionAgentOptions,
   SystemPromptOption,
 } from 'acpx/runtime'
@@ -88,17 +92,45 @@ export interface AcpxLanguageModelOptions {
   mode?: string
 }
 
+/**
+ * Point-in-time snapshot of `usage_update` data observed during a turn.
+ * Emitted on `provider.events` so multiple subscribers (UI bar,
+ * telemetry, auto-compact watcher) can react independently of which
+ * stream is currently consuming the AI SDK output.
+ */
+export interface AcpxUsageSnapshot {
+  /** Tokens currently in context — left half of a usage bar. */
+  used?: number
+  /** Total context window size in tokens — right half of a usage bar. */
+  size?: number
+  /** Agent-reported cumulative cost. Only present when the agent emits it. */
+  cost?: AcpRuntimeUsageCost
+  /**
+   * Per-turn token breakdown when the agent populates ACP's
+   * `_meta.usage` (Claude Code does; not every adapter does).
+   */
+  breakdown?: AcpRuntimeUsageBreakdown
+  /** Wall-clock time at which the event was observed (`Date.now()`). */
+  at: number
+  /** Logical session that emitted the event. */
+  sessionKey: string
+}
+
 export type {
   AcpPermissionDecision,
   AcpPermissionRequest,
   AcpRuntime,
+  AcpRuntimeAvailableCommand,
   AcpRuntimeDoctorReport,
   AcpRuntimeEvent,
   AcpRuntimeHandle,
   AcpRuntimeSessionModels,
+  AcpRuntimeSessionUsage,
   AcpRuntimeStatus,
   AcpRuntimeTurnResult,
   AcpRuntimeTurnResultError,
+  AcpRuntimeUsageBreakdown,
+  AcpRuntimeUsageCost,
   SessionAgentOptions,
   SystemPromptOption,
 }

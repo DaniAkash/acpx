@@ -178,6 +178,19 @@
     },
     {
       "includes": [
+        "**/acpx-ai-provider/src/convert-events.ts",
+        "**/acpx-ai-provider/src/provider.ts"
+      ],
+      "linter": {
+        "rules": {
+          "nursery": {
+            "noExcessiveLinesPerFile": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
         "**/agent-mcp-manager/src/_catalog/client-configs.ts",
         "**/agent-mcp-manager/src/planner/planner.ts",
         "**/agent-mcp-manager/src/api.ts"

@@ -1,6 +1,6 @@
 {
   "name": "acpx-ai-provider",
-  "version": "0.0.7",
+  "version": "1.0.0",
   "description": "Vercel AI SDK provider on top of acpx/runtime — bring any ACP agent (Claude, Codex, Gemini, Copilot, Cursor…) to AI SDK with one install.",
   "license": "MIT",
   "author": "Dani Akash",

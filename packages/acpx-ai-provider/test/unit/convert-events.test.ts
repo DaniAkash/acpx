@@ -438,7 +438,7 @@ describe('tool_call — completed and failed', () => {
 })
 
 describe('status — usage_update', () => {
-  test('captures used and size for a later finish() call', () => {
+  test('captures used as totalTokens and surfaces size on providerMetadata.acpx.contextWindow', () => {
     const t = newTranslator()
     const parts = feed(t, [
       status({ tag: 'usage_update', used: 100, size: 4096 }),
@@ -453,9 +453,139 @@ describe('status — usage_update', () => {
         inputTokens: undefined,
         outputTokens: undefined,
         totalTokens: 100,
-        cachedInputTokens: 4096,
+        cachedInputTokens: undefined,
+        reasoningTokens: undefined,
+      },
+      providerMetadata: {
+        acpx: { contextWindow: 4096 },
       },
     })
+  })
+
+  test('breakdown overrides used for totalTokens and populates per-field usage', () => {
+    const t = newTranslator()
+    feed(t, [
+      status({
+        tag: 'usage_update',
+        used: 1200,
+        size: 200_000,
+        breakdown: {
+          inputTokens: 800,
+          outputTokens: 400,
+          cachedReadTokens: 600,
+          cachedWriteTokens: 50,
+          thoughtTokens: 75,
+          totalTokens: 1925,
+        },
+      }),
+    ])
+    const finishPart = t.finish({
+      result: { status: 'completed' },
+    }) as Extract<LanguageModelV2StreamPart, { type: 'finish' }>
+    expect(finishPart.usage).toEqual({
+      inputTokens: 800,
+      outputTokens: 400,
+      totalTokens: 1925,
+      cachedInputTokens: 600,
+      reasoningTokens: 75,
+    })
+    expect(finishPart.providerMetadata?.acpx).toEqual({
+      contextWindow: 200_000,
+    })
+  })
+
+  test('cost on usage_update surfaces on providerMetadata.acpx.cost', () => {
+    const t = newTranslator()
+    feed(t, [
+      status({
+        tag: 'usage_update',
+        used: 10,
+        size: 100,
+        cost: { amount: 0.0123, currency: 'USD' },
+      }),
+    ])
+    const finishPart = t.finish({
+      result: { status: 'completed' },
+    }) as Extract<LanguageModelV2StreamPart, { type: 'finish' }>
+    expect(finishPart.providerMetadata?.acpx).toEqual({
+      contextWindow: 100,
+      cost: { amount: 0.0123, currency: 'USD' },
+    })
+  })
+
+  test('failed turn keeps contextWindow + cost AND adds errorCode + errorMessage on providerMetadata.acpx', () => {
+    const t = newTranslator()
+    feed(t, [
+      status({
+        tag: 'usage_update',
+        used: 500,
+        size: 4096,
+        cost: { amount: 0.05, currency: 'USD' },
+      }),
+    ])
+    const finishPart = t.finish({
+      result: {
+        status: 'failed',
+        error: { message: 'boom', code: 'rate' },
+      },
+    }) as Extract<LanguageModelV2StreamPart, { type: 'finish' }>
+    expect(finishPart.providerMetadata?.acpx).toEqual({
+      contextWindow: 4096,
+      cost: { amount: 0.05, currency: 'USD' },
+      errorCode: 'rate',
+      errorMessage: 'boom',
+    })
+  })
+
+  test('finish() omits providerMetadata entirely when no usage_update and not failed', () => {
+    const t = newTranslator()
+    const finishPart = t.finish({
+      result: { status: 'completed', stopReason: 'end_turn' },
+    }) as Extract<LanguageModelV2StreamPart, { type: 'finish' }>
+    expect(finishPart.providerMetadata).toBeUndefined()
+  })
+
+  test('onUsageUpdate callback fires with the raw event', () => {
+    const seen: Array<{ used?: number; size?: number }> = []
+    const t = new EventTranslator({
+      generateId: makeIdGen(),
+      onUsageUpdate: (ev) => {
+        seen.push({ used: ev.used, size: ev.size })
+      },
+    })
+    feed(t, [
+      status({ tag: 'usage_update', used: 50, size: 1000 }),
+      status({ tag: 'usage_update', used: 75, size: 1000 }),
+    ])
+    expect(seen).toEqual([
+      { used: 50, size: 1000 },
+      { used: 75, size: 1000 },
+    ])
+  })
+
+  test('onAvailableCommands callback fires with the full list', () => {
+    const seen: Array<unknown> = []
+    const t = new EventTranslator({
+      generateId: makeIdGen(),
+      onAvailableCommands: (cmds) => {
+        seen.push(cmds)
+      },
+    })
+    feed(t, [
+      status({
+        tag: 'available_commands_update',
+        availableCommands: [
+          { name: '/compact', description: 'Compact context', hasInput: false },
+          { name: '/clear', hasInput: false },
+        ],
+      }),
+    ])
+    expect(seen).toEqual([
+      [
+        { name: '/compact', description: 'Compact context', hasInput: false },
+        { name: '/clear', hasInput: false },
+      ],
+    ])
   })
 
   test('non-usage status events emit nothing and leave usage at default', () => {

@@ -5,13 +5,12 @@
 
 [![npm](https://img.shields.io/npm/v/acpx-ai-provider.svg)](https://www.npmjs.com/package/acpx-ai-provider)
 
-> [!WARNING]
-> **Alpha software.** Both this package and its underlying runtime
-> ([`acpx`](https://www.npmjs.com/package/acpx)) are pre-1.0. Public
-> APIs may change in any minor release. Pin a version in production
-> and read the [Known limitations](#known-limitations) section before
-> picking it up — most of the rough edges flow through from
-> `acpx/runtime`, which is itself still stabilizing its event shape.
+> [!NOTE]
+> **Stable.** As of `1.0.0` the public API is stable and ready for
+> production use. Breaking changes follow semantic versioning and land
+> only in major releases. Runtime-level behavior rides on the
+> [`acpx`](https://www.npmjs.com/package/acpx) runtime and tracks its
+> releases; see [Known limitations](#known-limitations).
 
 ## Why
 
@@ -527,6 +526,103 @@ const models = await provider.getModels({ sessionKey: 'codex::/repo' })
 To **change** the model, use `setConfigOption('model', id)` from
 [Lifecycle controls](#lifecycle-controls).
 
+## Live usage + slash commands
+
+The provider surfaces two ACP wire-level streams that live outside the
+AI SDK language-model channel:
+
+- **`usage_update`**: per-turn context-window usage, optional cost,
+  and (when the agent populates it) a typed per-turn token breakdown.
+- **`available_commands_update`**: the agent's advertised slash
+  commands (`/compact`, `/clear`, `/cost`, …) with names, descriptions,
+  and a `hasInput` flag.
+
+Both arrive via the runtime's event channel during a turn. Subscribe
+to them on the provider:
+
+```ts
+const provider = createAcpxProvider({ agent: 'claude' })
+
+provider.events.on('usage', (snapshot) => {
+  // snapshot: { used, size, cost?, breakdown?, at, sessionKey }
+  ui.renderContextBar(snapshot.used ?? 0, snapshot.size ?? 0)
+})
+
+provider.events.on('availableCommands', ({ commands, sessionKey }) => {
+  ui.renderCommandPalette(commands)
+})
+```
+
+Need synchronous reads instead of push? `provider.getUsage()` and
+`provider.getAvailableCommands()` return the latest snapshot for a
+session (or `undefined` / `[]` if nothing has been observed yet):
+
+```ts
+const snapshot = provider.getUsage()
+const commands = provider.getAvailableCommands()
+```
+
+### Triggering compaction
+
+ACP itself has no compaction verb. `/compact` is a slash command the
+agent (Claude Code, Codex) intercepts on its side. The provider's
+`compact()` helper picks up the advertised name from the
+`available_commands_update` event and sends it as a regular turn:
+
+```ts
+// Drive one real turn so available_commands_update flows through.
+// `prepare()` alone is not enough: the event only reaches the
+// provider's in-memory command map during an active doStream / doGenerate
+// turn. See the note below.
+await streamText({
+  model: provider.languageModel(),
+  prompt: 'hi',
+})
+
+if (provider.getAvailableCommands().some((c) => c.name.includes('compact'))) {
+  await provider.compact()
+}
+```
+
+For other slash commands (or non-standard compact names), use the
+lower-level `runSlashCommand`:
+
+```ts
+await provider.runSlashCommand({ name: '/clear' })
+```
+
+> **Note on `prepare()`:** `prepare()` spawns the ACP session but does
+> **not** populate `provider.getAvailableCommands()`. The
+> `available_commands_update` event only flows through the
+> `EventTranslator` callback during an active turn (`doStream` /
+> `doGenerate`). Subscribe to `provider.events.on('availableCommands', …)`
+> *before* the first turn, or read from the in-memory map after at
+> least one turn has completed.
+
+### Where the per-turn usage lands
+
+When the agent populates ACP's `_meta.usage` (Claude Code does; Codex
+0.0.44 today does not), the breakdown flows into the AI SDK V2 usage
+object on the `finish` part:
+
+| ACP `_meta.usage` field | AI SDK `LanguageModelV2Usage` field |
+|---|---|
+| `inputTokens` | `inputTokens` |
+| `outputTokens` | `outputTokens` |
+| `totalTokens` (or `used` fallback) | `totalTokens` |
+| `cachedReadTokens` | `cachedInputTokens` |
+| `thoughtTokens` | `reasoningTokens` |
+
+The context-window ceiling (`size`) and the cumulative `cost` ride on
+`providerMetadata.acpx.{contextWindow,cost}` on the finish part;
+they're agent-reported state, not LLM token counts.
+
+> **Migrating from earlier versions:** prior releases of this provider
+> shoehorned `size` into `cachedInputTokens` as a transport hack. That
+> mapping is corrected here. If a downstream consumer was reading
+> `usage.cachedInputTokens` to mean "context window size", switch to
+> `providerMetadata.acpx.contextWindow`.
+
 ## Structured output (JSON)
 
 `generateObject` / `streamObject` work via JSON mode. The provider
@@ -577,11 +673,12 @@ This is alpha software. Most rough edges flow through from
   separately, but the runtime's normalizer drops the distinction.
 - **Tool input is a raw string, not parsed JSON.** `JSON.parse` it
   yourself when the agent emits valid JSON; expect failures otherwise.
-- **No input/output token split.** Only `cachedInputTokens` flows
-  through to AI SDK. `inputTokens`, `outputTokens`, and `totalTokens`
-  are `undefined`. Per-token cost calculation won't work.
-- **No streaming usage updates.** Only the most recent
-  `usage_update` from the runtime survives onto the `finish` part.
+- **Per-token breakdown only when the agent populates `_meta.usage`.**
+  Claude Code does; codex-acp `0.0.44` does not. When the breakdown is
+  absent, the AI SDK `usage` object carries `totalTokens` only (from
+  the runtime's `used` field) and the context-window ceiling rides on
+  `providerMetadata.acpx.contextWindow`. See
+  [Live usage + slash commands](#live-usage--slash-commands).
 - **Permission policy is mode-based by default.** When you don't
   provide an `onPermissionRequest` callback, requests fall through to
   `permissionMode` + `nonInteractivePermissions` — same as before.
