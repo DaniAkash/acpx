@@ -532,9 +532,9 @@ To **change** the model, use `setConfigOption('model', id)` from
 The provider surfaces two ACP wire-level streams that live outside the
 AI SDK language-model channel:
 
-- **`usage_update`** — per-turn context-window usage, optional cost,
+- **`usage_update`**: per-turn context-window usage, optional cost,
   and (when the agent populates it) a typed per-turn token breakdown.
-- **`available_commands_update`** — the agent's advertised slash
+- **`available_commands_update`**: the agent's advertised slash
   commands (`/compact`, `/clear`, `/cost`, …) with names, descriptions,
   and a `hasInput` flag.
 
@@ -565,14 +565,14 @@ const commands = provider.getAvailableCommands()
 
 ### Triggering compaction
 
-ACP itself has no compaction verb — `/compact` is a slash command the
+ACP itself has no compaction verb. `/compact` is a slash command the
 agent (Claude Code, Codex) intercepts on its side. The provider's
 `compact()` helper picks up the advertised name from the
 `available_commands_update` event and sends it as a regular turn:
 
 ```ts
 // Drive one real turn so available_commands_update flows through.
-// `prepare()` alone is not enough — the event only reaches the
+// `prepare()` alone is not enough: the event only reaches the
 // provider's in-memory command map during an active doStream / doGenerate
 // turn. See the note below.
 await streamText({
@@ -615,7 +615,7 @@ object on the `finish` part:
 | `thoughtTokens` | `reasoningTokens` |
 
 The context-window ceiling (`size`) and the cumulative `cost` ride on
-`providerMetadata.acpx.{contextWindow,cost}` on the finish part —
+`providerMetadata.acpx.{contextWindow,cost}` on the finish part;
 they're agent-reported state, not LLM token counts.
 
 > **Migrating from earlier versions:** prior releases of this provider
