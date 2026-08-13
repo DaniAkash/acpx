@@ -5,13 +5,12 @@
 
 [![npm](https://img.shields.io/npm/v/acpx-ai-provider.svg)](https://www.npmjs.com/package/acpx-ai-provider)
 
-> [!WARNING]
-> **Alpha software.** Both this package and its underlying runtime
-> ([`acpx`](https://www.npmjs.com/package/acpx)) are pre-1.0. Public
-> APIs may change in any minor release. Pin a version in production
-> and read the [Known limitations](#known-limitations) section before
-> picking it up — most of the rough edges flow through from
-> `acpx/runtime`, which is itself still stabilizing its event shape.
+> [!NOTE]
+> **Stable.** As of `1.0.0` the public API is stable and ready for
+> production use. Breaking changes follow semantic versioning and land
+> only in major releases. Runtime-level behavior rides on the
+> [`acpx`](https://www.npmjs.com/package/acpx) runtime and tracks its
+> releases; see [Known limitations](#known-limitations).
 
 ## Why
 
