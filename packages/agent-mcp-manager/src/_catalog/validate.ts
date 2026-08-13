@@ -1,4 +1,3 @@
-// fallow-ignore-next-line unused-files
 /**
  * Catalog validator. Pure functions. Runs at test time (see
  * `test/unit/catalog-validate.test.ts`) and blocks a build whenever a

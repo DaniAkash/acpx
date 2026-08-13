@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
   "root": true,
   "vcs": {
     "enabled": true,
@@ -18,7 +18,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
         "noUnusedImports": "error",
         "noUnusedVariables": "error"
@@ -35,16 +35,15 @@
         "noConsole": "error"
       },
       "style": {
-        "noProcessEnv": "error"
-      },
-      "nursery": {
+        "noProcessEnv": "error",
         "noExcessiveLinesPerFile": {
           "level": "error",
           "options": {
             "maxLines": 300
           }
         }
-      }
+      },
+      "nursery": {}
     }
   },
   "javascript": {
@@ -62,11 +61,10 @@
             "noConsole": "off"
           },
           "style": {
-            "noProcessEnv": "off"
-          },
-          "nursery": {
+            "noProcessEnv": "off",
             "noExcessiveLinesPerFile": "off"
-          }
+          },
+          "nursery": {}
         }
       }
     },
@@ -85,11 +83,10 @@
       "linter": {
         "rules": {
           "style": {
-            "noProcessEnv": "off"
-          },
-          "nursery": {
+            "noProcessEnv": "off",
             "noExcessiveLinesPerFile": "off"
           },
+          "nursery": {},
           "complexity": {
             "noExcessiveCognitiveComplexity": "off"
           }
@@ -120,12 +117,11 @@
               "options": { "maxAllowedComplexity": 50 }
             }
           },
-          "nursery": {
-            "noExcessiveLinesPerFile": "off"
-          },
+          "nursery": {},
           "style": {
             "noProcessEnv": "off",
-            "noNonNullAssertion": "off"
+            "noNonNullAssertion": "off",
+            "noExcessiveLinesPerFile": "off"
           }
         }
       }
@@ -144,7 +140,8 @@
               "options": { "maxAllowedComplexity": 50 }
             }
           },
-          "nursery": {
+          "nursery": {},
+          "style": {
             "noExcessiveLinesPerFile": "off"
           }
         }
@@ -170,7 +167,8 @@
               "options": { "maxAllowedComplexity": 50 }
             }
           },
-          "nursery": {
+          "nursery": {},
+          "style": {
             "noExcessiveLinesPerFile": "off"
           }
         }
@@ -183,7 +181,8 @@
       ],
       "linter": {
         "rules": {
-          "nursery": {
+          "nursery": {},
+          "style": {
             "noExcessiveLinesPerFile": "off"
           }
         }
@@ -203,7 +202,8 @@
               "options": { "maxAllowedComplexity": 50 }
             }
           },
-          "nursery": {
+          "nursery": {},
+          "style": {
             "noExcessiveLinesPerFile": "off"
           }
         }
