@@ -29,12 +29,6 @@ updates:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
-      # @ai-sdk/* and microsandbox are volatile pre-1.0 deps that
-      # acpx-ai-harness and ai-sdk-microsandbox track deliberately; a routine
-      # bump breaks their source (canary API churn, microsandbox 0.x minors).
-      # Update these by hand alongside the adapter migration.
-      - dependency-name: "@ai-sdk/*"
-      - dependency-name: "microsandbox"
     groups:
       minor-and-patch:
         update-types:
