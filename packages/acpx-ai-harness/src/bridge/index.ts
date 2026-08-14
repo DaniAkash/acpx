@@ -50,5 +50,5 @@ await runBridge<AcpxBridgeStartMessage>({
   bridgeType: 'acpx',
   bridgeStateDir,
   onStart: (start, turn) => runAcpxTurn(start, turn, { workdir }),
-  onDetach: () => ({}),
+  onStop: () => ({}),
 })

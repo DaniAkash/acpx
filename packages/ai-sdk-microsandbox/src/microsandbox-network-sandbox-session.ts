@@ -10,6 +10,24 @@ export const MICROSANDBOX_PROVIDER_ID = 'microsandbox'
 /** Default working directory used when the sandbox config doesn't declare one. */
 export const DEFAULT_WORKING_DIRECTORY = '/'
 
+/**
+ * Resolve a session's default working directory. Prefers the caller-supplied
+ * configured workdir (create mode), falling back to the sandbox's own config
+ * readback (wrap mode), then to {@link DEFAULT_WORKING_DIRECTORY}.
+ */
+async function resolveDefaultWorkingDirectory(
+  sandbox: Sandbox,
+  configured: string | undefined,
+): Promise<string> {
+  if (typeof configured === 'string' && configured.length > 0) {
+    return configured
+  }
+  const config = (await sandbox.config()) as { workdir?: unknown }
+  return typeof config.workdir === 'string' && config.workdir.length > 0
+    ? config.workdir
+    : DEFAULT_WORKING_DIRECTORY
+}
+
 export interface MicrosandboxNetworkSandboxSessionInput {
   readonly sandbox: Sandbox
   readonly ports: ReadonlyArray<ResolvedPort>
@@ -85,14 +103,23 @@ export class MicrosandboxNetworkSandboxSession
     ports: ReadonlyArray<ResolvedPort>
     publicHostname?: string
     ownsLifecycle: boolean
+    /**
+     * The workdir the sandbox was configured with, when the caller knows it
+     * (create mode). Preferred over reading it back from `sandbox.config()`:
+     * microsandbox 0.6.x stopped populating the config's `workdir` from the
+     * builder's `.workdir(...)`, so the readback reports `/`. Omitted in wrap
+     * mode, where the caller owns the sandbox and the config readback is the
+     * only available source.
+     */
+    configuredWorkdir?: string
   }): Promise<MicrosandboxNetworkSandboxSession> {
-    const config = (await input.sandbox.config()) as { workdir?: unknown }
-    const workdir =
-      typeof config.workdir === 'string' && config.workdir.length > 0
-        ? config.workdir
-        : DEFAULT_WORKING_DIRECTORY
+    const { configuredWorkdir, ...sessionInput } = input
+    const workdir = await resolveDefaultWorkingDirectory(
+      sessionInput.sandbox,
+      configuredWorkdir,
+    )
     return new MicrosandboxNetworkSandboxSession({
-      ...input,
+      ...sessionInput,
       defaultWorkingDirectory: workdir,
     })
   }

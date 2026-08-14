@@ -53,23 +53,37 @@ export function bytesToStream(bytes: Uint8Array): ReadableStream<Uint8Array> {
 
 /**
  * Demultiplex a microsandbox `ExecHandle`'s combined event stream into two
- * independent `ReadableStream<Uint8Array>`s — one for stdout, one for stderr.
- * Side effects from the source iterator are consumed exactly once; the
- * returned streams close together when an `exited` event arrives or when the
- * source iterator finishes.
+ * independent `ReadableStream<Uint8Array>`s (stdout, stderr) plus an
+ * `exitCode` promise.
+ *
+ * microsandbox's `ExecHandle` couples its async iterator and `handle.wait()`
+ * to one native stream: once the iterator reaches the terminal `exited` event
+ * (which it does as soon as the consumer drains stdout), a separate
+ * `handle.wait()` starves and throws "exec session ended without exit event".
+ * So the exit code is observed HERE, where the iterator is the single
+ * consumer, and handed back via `exitCode` instead of a competing `wait()`.
+ *
+ * The event stream is drained eagerly (not gated on the stdout reader) so the
+ * `exited` event is always observed even when the consumer never reads stdout;
+ * that trades ReadableStream backpressure for reliable exit detection, which is
+ * the right call for the bounded, promptly-read output of an agent turn.
  */
 export function demuxExecStreams(
   source: AsyncIterable<ExecEvent>,
   onPid?: (pid: number) => void,
-): { stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array> } {
+): {
+  stdout: ReadableStream<Uint8Array>
+  stderr: ReadableStream<Uint8Array>
+  exitCode: Promise<number>
+} {
   let stdoutController: ReadableStreamDefaultController<Uint8Array> | undefined
   let stderrController: ReadableStreamDefaultController<Uint8Array> | undefined
-  let pumping = false
 
+  // start() runs synchronously during construction, so both controllers are
+  // assigned before the pump below reads them.
   const stdout = new ReadableStream<Uint8Array>({
     start(c) {
       stdoutController = c
-      pump()
     },
   })
   const stderr = new ReadableStream<Uint8Array>({
@@ -78,9 +92,18 @@ export function demuxExecStreams(
     },
   })
 
-  async function pump() {
-    if (pumping) return
-    pumping = true
+  let settleExit: (code: number) => void = () => {}
+  let failExit: (error: unknown) => void = () => {}
+  const exitCode = new Promise<number>((resolve, reject) => {
+    settleExit = resolve
+    failExit = reject
+  })
+  // Never let an unawaited `exitCode` (e.g. caller only reads stdout) surface
+  // as an unhandled rejection.
+  exitCode.catch(() => {})
+
+  void (async () => {
+    let sawExit = false
     try {
       for await (const event of source) {
         switch (event.kind) {
@@ -94,17 +117,24 @@ export function demuxExecStreams(
             stderrController?.enqueue(event.data)
             break
           case 'exited':
-            // Source iterator will terminate after this event; fall through.
+            sawExit = true
+            settleExit(event.code)
             break
         }
       }
       stdoutController?.close()
       stderrController?.close()
+      if (!sawExit) {
+        failExit(
+          new Error('microsandbox exec stream ended without an exited event'),
+        )
+      }
     } catch (error) {
       stdoutController?.error(error)
       stderrController?.error(error)
+      if (!sawExit) failExit(error)
     }
-  }
+  })()
 
-  return { stdout, stderr }
+  return { stdout, stderr, exitCode }
 }

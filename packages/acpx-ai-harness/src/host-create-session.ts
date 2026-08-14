@@ -10,9 +10,9 @@ import { HarnessCapabilityUnsupportedError } from '@ai-sdk/harness'
 import type { Experimental_SandboxProcess } from '@ai-sdk/provider-utils'
 import type { AcpxBridgeStartMessage } from './acpx-bridge-protocol.ts'
 import type { AcpxHarnessSettings } from './acpx-harness.ts'
-import { requestDetachPayload } from './host-detach.ts'
 import { wirePromptControl } from './host-prompt-control.ts'
 import { awaitProcExit, extractPromptText } from './host-session-utils.ts'
+import { requestStopPayload } from './host-stop.ts'
 import type { AcpxChannel } from './sandbox-channel.ts'
 
 export type RespawnStrategy = 'fresh' | 'attach' | 'rerun'
@@ -32,7 +32,7 @@ export interface CreateSessionInput {
   /**
    * Bridge process handle, or undefined when we ATTACH'd to a bridge
    * spawned by a previous process. On ATTACH the host doesn't own the
-   * process lifecycle, so doDestroy / doStop send `shutdown` / `detach`
+   * process lifecycle, so doDestroy / doStop send `destroy` / `stop`
    * frames and trust the bridge to exit.
    */
   readonly proc: Experimental_SandboxProcess | undefined
@@ -131,7 +131,7 @@ export function createSession(input: CreateSessionInput): HarnessV1Session {
     stopped = true
     try {
       input.channel.beginClose()
-      input.channel.send({ type: 'shutdown' })
+      input.channel.send({ type: 'destroy' })
     } catch {
       /* socket may already be gone */
     }
@@ -188,14 +188,14 @@ export function createSession(input: CreateSessionInput): HarnessV1Session {
     assertLive('doStop')
     stopped = true
     input.channel.beginClose()
-    const detachData = await requestDetachPayload(input.channel)
+    const stopData = await requestStopPayload(input.channel)
     await awaitProcExit(input.proc)
     input.channel.close()
     return {
       type: 'resume-session',
       harnessId: 'acpx',
       specificationVersion: 'harness-v1',
-      data: detachData as HarnessV1ResumeSessionState['data'],
+      data: stopData as HarnessV1ResumeSessionState['data'],
     }
   }
 

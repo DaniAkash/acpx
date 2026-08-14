@@ -1,4 +1,4 @@
-import { Sandbox } from 'microsandbox'
+import { listAllSandboxes } from '../../helpers/list-sandboxes.ts'
 
 /**
  * Best-effort cleanup of e2e-produced sandboxes. Kills any sandbox whose
@@ -27,7 +27,7 @@ export async function purgeHarnessForks(): Promise<void> {
 async function purgeMatching(
   predicate: (name: string) => boolean,
 ): Promise<void> {
-  const handles = await Sandbox.list().catch(() => [])
+  const handles = await listAllSandboxes()
   for (const h of handles) {
     const cfg = h.config() as { name?: string }
     if (typeof cfg.name !== 'string') continue

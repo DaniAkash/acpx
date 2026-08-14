@@ -90,25 +90,37 @@ describeIntegration('microsandbox: network policy enforcement', () => {
   )
 
   test(
-    'deniedCIDRs takes precedence over allowedHosts that resolve into the same range',
+    'deniedCIDRs override an overlapping allowedCIDRs entry (deny wins)',
     async () => {
-      // Pin a host that historically resolves into a known public range; the
-      // deniedCIDRs rule must short-circuit even though allowedHosts covers it.
-      // We don't depend on a specific IP: we use 0.0.0.0/0 deny + a host allow
-      // to force the deny to win regardless of resolution. This proves the
-      // ordering, not a specific routing decision.
+      // Microsandbox 0.6.x evaluates rules first-match-wins per direction, and
+      // the translation emits deniedCIDRs before allowedCIDRs, so a specific
+      // deny short-circuits a broad allow covering the same address.
+      //
+      // Note: this precedence holds only WITHIN the CIDR layer. A CIDR deny
+      // cannot veto a domain `allowedHosts` entry — 0.6.x matches domain rules
+      // and CIDR rules against different connection-addressing modes, so the
+      // two never conflict. The allowlist enforcement that actually matters
+      // (allow listed host, block unlisted) is covered by the test above.
       const provider = createMicrosandbox({
         image: DEFAULT_INTEGRATION_IMAGE,
         networkPolicy: {
           mode: 'custom',
-          allowedHosts: ['example.com'],
-          deniedCIDRs: ['0.0.0.0/0'],
+          allowedCIDRs: ['1.0.0.0/8'],
+          deniedCIDRs: ['1.1.1.1/32'],
         },
       })
       const session = await provider.createSession()
       sessions.push(session)
-      const reachable = await tcpProbe(session, 'example.com', 443)
-      expect(reachable).toBe(false)
+      // Positive control: an address inside the allowed range but NOT denied
+      // (1.0.0.1, Cloudflare's secondary anycast) must be reachable, proving the
+      // allow CIDR is actually in effect and the probe isn't failing for an
+      // unrelated reason.
+      const control = await tcpProbe(session, '1.0.0.1', 443)
+      expect(control).toBe(true)
+      // The denied /32 inside that same allowed range must be blocked, proving
+      // deniedCIDRs override an effective overlapping allowedCIDRs.
+      const denied = await tcpProbe(session, '1.1.1.1', 443)
+      expect(denied).toBe(false)
     },
     INTEGRATION_TEST_TIMEOUT_MS,
   )

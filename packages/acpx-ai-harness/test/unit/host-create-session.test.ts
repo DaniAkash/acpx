@@ -13,14 +13,14 @@ import type { AcpxChannel } from '../../src/sandbox-channel.ts'
 interface FakeChannel {
   channel: AcpxChannel
   sent: Array<{ type: string } & Record<string, unknown>>
-  detachReply: (data: unknown) => void
+  stopReply: (data: unknown) => void
   suspendValue: number
 }
 
 function makeFakeChannel(): FakeChannel {
   const sent: FakeChannel['sent'] = []
   const listeners = new Map<string, Array<(event: unknown) => void>>()
-  const ref: { detachReply?: (data: unknown) => void; suspendValue: number } = {
+  const ref: { stopReply?: (data: unknown) => void; suspendValue: number } = {
     suspendValue: 99,
   }
   let closed = false
@@ -30,9 +30,9 @@ function makeFakeChannel(): FakeChannel {
       const arr = listeners.get(type) ?? []
       arr.push(listener)
       listeners.set(type, arr)
-      if (type === 'bridge-detach') {
-        ref.detachReply = (data: unknown) => {
-          listener({ type: 'bridge-detach', data })
+      if (type === 'bridge-stop') {
+        ref.stopReply = (data: unknown) => {
+          listener({ type: 'bridge-stop', data })
         }
       }
       return () => {
@@ -60,11 +60,11 @@ function makeFakeChannel(): FakeChannel {
   return {
     channel,
     sent,
-    get detachReply() {
+    get stopReply() {
       return (
-        ref.detachReply ??
+        ref.stopReply ??
         (() => {
-          throw new Error('bridge-detach listener not registered')
+          throw new Error('bridge-stop listener not registered')
         })
       )
     },
@@ -165,21 +165,21 @@ describe('createSession.doDetach', () => {
 })
 
 describe('createSession.doStop', () => {
-  test('sends a detach frame and emits the bridge-supplied state', async () => {
+  test('sends a stop frame and emits the bridge-supplied state', async () => {
     const fake = makeFakeChannel()
     const session = createSession(makeInput({}, fake))
     const stopP = session.doStop()
     // Allow the listener to register before delivering the reply.
     await new Promise((r) => setTimeout(r, 0))
-    fake.detachReply({ acpxSessionKey: 'sess-1', lastSeenEventId: 99 })
+    fake.stopReply({ acpxSessionKey: 'sess-1', lastSeenEventId: 99 })
     const state = await stopP
     expect(state.type).toBe('resume-session')
     expect(state.data).toEqual({
       acpxSessionKey: 'sess-1',
       lastSeenEventId: 99,
     })
-    const detachFrame = fake.sent.find((m) => m.type === 'detach')
-    expect(detachFrame).toBeDefined()
+    const stopFrame = fake.sent.find((m) => m.type === 'stop')
+    expect(stopFrame).toBeDefined()
   })
 })
 
@@ -221,12 +221,12 @@ describe('createSession.doContinueTurn', () => {
 })
 
 describe('createSession.doDestroy', () => {
-  test('sends shutdown and closes the channel even without a proc handle', async () => {
+  test('sends destroy and closes the channel even without a proc handle', async () => {
     const fake = makeFakeChannel()
     const session = createSession(makeInput({ proc: undefined }, fake))
     await session.doDestroy()
-    const shutdown = fake.sent.find((m) => m.type === 'shutdown')
-    expect(shutdown).toBeDefined()
+    const destroy = fake.sent.find((m) => m.type === 'destroy')
+    expect(destroy).toBeDefined()
     expect(fake.channel.isClosed()).toBe(true)
   })
 
@@ -235,8 +235,8 @@ describe('createSession.doDestroy', () => {
     const session = createSession(makeInput({ proc: undefined }, fake))
     await session.doDestroy()
     await session.doDestroy()
-    const shutdownFrames = fake.sent.filter((m) => m.type === 'shutdown')
-    expect(shutdownFrames).toHaveLength(1)
+    const destroyFrames = fake.sent.filter((m) => m.type === 'destroy')
+    expect(destroyFrames).toHaveLength(1)
   })
 })
 
