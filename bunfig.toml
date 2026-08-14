@@ -4,3 +4,13 @@
 # gate would lock us out of fresh fixes during active development. Still
 # non-zero so we don't blindly install brand-new tarballs.
 minimumReleaseAge = 86400
+
+# Global virtual store: install packages once into a shared store and link them
+# into node_modules as symlinks, instead of copying a full tree per project.
+# node_modules shrinks to a few MB of symlinks, which is a big win for the
+# on-demand worktree workflow, and warm installs are much faster.
+#
+# Requires the isolated linker, which is already the workspace default; set
+# explicitly to make the intent clear. https://bun.com/docs/pm/global-store
+linker = "isolated"
+globalStore = true
