@@ -101,7 +101,6 @@ describeIntegration('microsandbox: network policy enforcement', () => {
       // and CIDR rules against different connection-addressing modes, so the
       // two never conflict. The allowlist enforcement that actually matters
       // (allow listed host, block unlisted) is covered by the test above.
-      const target = '1.1.1.1' // stable public anycast, inside 1.0.0.0/8
       const provider = createMicrosandbox({
         image: DEFAULT_INTEGRATION_IMAGE,
         networkPolicy: {
@@ -112,8 +111,16 @@ describeIntegration('microsandbox: network policy enforcement', () => {
       })
       const session = await provider.createSession()
       sessions.push(session)
-      const reachable = await tcpProbe(session, target, 443)
-      expect(reachable).toBe(false)
+      // Positive control: an address inside the allowed range but NOT denied
+      // (1.0.0.1, Cloudflare's secondary anycast) must be reachable, proving the
+      // allow CIDR is actually in effect and the probe isn't failing for an
+      // unrelated reason.
+      const control = await tcpProbe(session, '1.0.0.1', 443)
+      expect(control).toBe(true)
+      // The denied /32 inside that same allowed range must be blocked, proving
+      // deniedCIDRs override an effective overlapping allowedCIDRs.
+      const denied = await tcpProbe(session, '1.1.1.1', 443)
+      expect(denied).toBe(false)
     },
     INTEGRATION_TEST_TIMEOUT_MS,
   )
