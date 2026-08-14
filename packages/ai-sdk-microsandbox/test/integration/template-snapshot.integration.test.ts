@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
 import { Sandbox, Snapshot } from 'microsandbox'
 import { TemplateCache } from '../../src/template-cache.ts'
+import { listAllSandboxes } from '../helpers/list-sandboxes.ts'
 import { createTmpCacheRoot } from '../helpers/tmp-cache-root.ts'
 import {
   DEFAULT_INTEGRATION_IMAGE,
@@ -33,8 +34,9 @@ describeIntegration(
           // ignore
         }
       }
-      const handles = await Sandbox.list().catch(() => [])
-      for (const h of handles) {
+      // 0.6.x `Sandbox.list()` is cursor-paginated; listAllSandboxes walks
+      // every page so no leftover source sandbox is missed.
+      for (const h of await listAllSandboxes()) {
         const cfg = h.config() as { name?: string }
         if (
           typeof cfg.name === 'string' &&

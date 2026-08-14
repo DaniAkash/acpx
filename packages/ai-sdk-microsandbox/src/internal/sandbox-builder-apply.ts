@@ -60,8 +60,8 @@ function applyRuntimeSettings(
     b = applyPort(b, port)
   }
   if (settings.networkPolicy !== undefined) {
-    const policyBuilder = translateNetworkPolicy(settings.networkPolicy)
-    b = b.network((nb) => nb.policyFromBuilder(policyBuilder))
+    const networkPolicy = translateNetworkPolicy(settings.networkPolicy)
+    b = b.network((nb) => nb.policy(networkPolicy))
   }
   return b
 }

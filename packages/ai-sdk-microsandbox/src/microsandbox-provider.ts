@@ -176,6 +176,7 @@ export class MicrosandboxProvider implements HarnessV1SandboxProvider {
       ports: createModePorts(settings),
       publicHostname: settings.publicHostname,
       ownsLifecycle: true,
+      configuredWorkdir: settings.workdir,
     })
   }
 
@@ -215,6 +216,7 @@ export class MicrosandboxProvider implements HarnessV1SandboxProvider {
       ports: createModePorts(settings),
       publicHostname: settings.publicHostname,
       ownsLifecycle: true,
+      configuredWorkdir: settings.workdir,
     })
   }
 
@@ -254,6 +256,7 @@ export class MicrosandboxProvider implements HarnessV1SandboxProvider {
       ports: createModePorts(settings),
       publicHostname: settings.publicHostname,
       ownsLifecycle: true,
+      configuredWorkdir: settings.workdir,
     })
   }
 }

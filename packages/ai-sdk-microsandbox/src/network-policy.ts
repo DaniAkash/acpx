@@ -1,45 +1,39 @@
 import type { HarnessV1NetworkPolicy } from '@ai-sdk/harness'
-import { NetworkPolicyBuilder } from 'microsandbox'
+import { Destination, type NetworkPolicy, Rule } from 'microsandbox'
 
 /**
  * Translate a harness {@link HarnessV1NetworkPolicy} into a microsandbox
- * `NetworkPolicyBuilder`. Apply the returned builder at sandbox-create time
- * via `NetworkBuilder.policyFromBuilder(builder)`. Microsandbox does not
- * support runtime policy updates, so this translation is one-shot.
+ * {@link NetworkPolicy}. Apply the returned policy at sandbox-create time via
+ * `NetworkBuilder.policy(policy)`. Microsandbox does not support runtime policy
+ * updates, so this translation is one-shot.
  *
- * Translation:
- * - `'allow-all'` → `defaultAllow()`
- * - `'deny-all'` → `defaultDeny()`
- * - `'custom'` → `defaultDeny()` + per-CIDR `deny.cidr` rules emitted FIRST
- *   followed by per-host `allow.domainSuffix` and per-CIDR `allow.cidr`. The
- *   harness contract guarantees `deniedCIDRs` overrides allows; emitting
- *   denies first gives deny-precedence under first-match evaluators (the
- *   common case for network rule engines) while leaving action-precedence
- *   evaluators unaffected by ordering. Microsandbox's exact evaluation
- *   semantics are confirmed by integration tests against a real microVM.
+ * Microsandbox evaluates rules first-match-wins, independently per direction
+ * (see the `NetworkPolicy` type doc). For `custom` mode we default-deny and
+ * list `deniedCIDRs` rules BEFORE the `allowedHosts` / `allowedCIDRs` rules, so
+ * an overlapping deny is matched first and wins, honouring the harness contract
+ * that `deniedCIDRs` override allows. Rules use the `any` direction to cover
+ * both egress and ingress, matching the pre-0.6 translation.
  */
 export function translateNetworkPolicy(
   policy: HarnessV1NetworkPolicy,
-): NetworkPolicyBuilder {
+): NetworkPolicy {
   switch (policy.mode) {
     case 'allow-all':
-      return new NetworkPolicyBuilder().defaultAllow()
+      return { defaultEgress: 'allow', defaultIngress: 'allow', rules: [] }
     case 'deny-all':
-      return new NetworkPolicyBuilder().defaultDeny()
+      return { defaultEgress: 'deny', defaultIngress: 'deny', rules: [] }
     case 'custom': {
-      const builder = new NetworkPolicyBuilder().defaultDeny()
-      // Denies first — first-match evaluators see them ahead of allows so
-      // deniedCIDRs win against overlapping allowedHosts/allowedCIDRs.
+      const rules: Rule[] = []
       for (const cidr of policy.deniedCIDRs ?? []) {
-        builder.rule((r) => r.any().deny((d) => d.cidr(cidr)))
+        rules.push(Rule.denyAny(Destination.cidr(cidr)))
       }
       for (const host of policy.allowedHosts ?? []) {
-        builder.rule((r) => r.any().allow((d) => d.domainSuffix(host)))
+        rules.push(Rule.allowAny(Destination.domainSuffix(host)))
       }
       for (const cidr of policy.allowedCIDRs ?? []) {
-        builder.rule((r) => r.any().allow((d) => d.cidr(cidr)))
+        rules.push(Rule.allowAny(Destination.cidr(cidr)))
       }
-      return builder
+      return { defaultEgress: 'deny', defaultIngress: 'deny', rules }
     }
   }
 }

@@ -22,6 +22,8 @@ function makeFakeBridgeTurn(): {
     abortSignal: controller.signal,
     firstTurn: true,
     bridgeLog: () => {},
+    emitWarning: () => {},
+    emitError: () => {},
   }
   return { turn, emitted, abort: () => controller.abort() }
 }

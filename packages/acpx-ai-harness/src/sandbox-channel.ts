@@ -28,8 +28,8 @@ export type AcpxBridgeInboundMessage =
     }
   | { type: 'user-message'; text: string }
   | { type: 'abort' }
-  | { type: 'shutdown' }
-  | { type: 'detach' }
+  | { type: 'destroy' }
+  | { type: 'stop' }
   | { type: 'resume'; lastSeenEventId: number }
 
 /** Channel typed against the acpx outbound + inbound wire shapes. */

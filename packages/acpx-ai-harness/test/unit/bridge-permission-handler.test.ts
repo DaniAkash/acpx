@@ -35,6 +35,8 @@ function makeFakeTurn(): {
     abortSignal: controller.signal,
     firstTurn: true,
     bridgeLog: () => {},
+    emitWarning: () => {},
+    emitError: () => {},
   }
   return { turn, emitted, pending, abort: () => controller.abort() }
 }

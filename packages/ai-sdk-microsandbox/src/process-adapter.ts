@@ -13,16 +13,18 @@ export function createSandboxProcess(
   abortSignal: AbortSignal | undefined,
 ): Experimental_SandboxProcess {
   let pid: number | undefined
-  const { stdout, stderr } = demuxExecStreams(handle, (resolvedPid) => {
-    pid = resolvedPid
-  })
+  const { stdout, stderr, exitCode } = demuxExecStreams(
+    handle,
+    (resolvedPid) => {
+      pid = resolvedPid
+    },
+  )
 
-  // The SDK's `handle.wait()` and `handle.kill()` don't compose: when
-  // `wait()` is awaited first, a subsequent `kill()` does not unblock
-  // it (verified empirically against microsandbox 0.5.7 — `kill()`
-  // returns instantly but `wait()` keeps blocking until the natural
-  // exit). We work around that by resolving `wait()` ourselves when
-  // abort fires, with the canonical SIGKILL exit code (128 + 9).
+  // The exit code comes from the demux (the single consumer of the handle's
+  // event stream), not `handle.wait()`, which would starve once the demux
+  // observes the terminal `exited` event. On abort we resolve `wait()`
+  // ourselves with the canonical SIGKILL exit code (128 + 9), since a killed
+  // exec may tear its stream down before delivering an `exited` event.
   let resolveAborted: ((value: { exitCode: number }) => void) | undefined
   const aborted = new Promise<{ exitCode: number }>((res) => {
     resolveAborted = res
@@ -52,7 +54,7 @@ export function createSandboxProcess(
     stderr,
     async wait() {
       return await Promise.race([
-        handle.wait().then((r) => ({ exitCode: r.code })),
+        exitCode.then((code) => ({ exitCode: code })),
         aborted,
       ])
     },
