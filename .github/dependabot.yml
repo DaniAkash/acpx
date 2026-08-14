@@ -29,6 +29,18 @@ updates:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+      # Pre-1.0 (0.x) deps: a "minor" bump is breaking under the semver-0
+      # convention, so keep these patch-only and adopt minors by hand alongside
+      # any required adapter changes.
+      - dependency-name: "acpx"
+        update-types:
+          - "version-update:semver-minor"
+      - dependency-name: "bunup"
+        update-types:
+          - "version-update:semver-minor"
+      - dependency-name: "microsandbox"
+        update-types:
+          - "version-update:semver-minor"
     groups:
       minor-and-patch:
         update-types:
