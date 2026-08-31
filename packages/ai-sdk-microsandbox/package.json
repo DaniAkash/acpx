@@ -58,11 +58,11 @@
     "microsandbox": ">=0.6.8"
   },
   "devDependencies": {
-    "@ai-sdk/harness": "1.0.68",
-    "@ai-sdk/harness-codex": "1.0.70",
-    "@ai-sdk/provider-utils": "5.0.27",
+    "@ai-sdk/harness": "1.0.92",
+    "@ai-sdk/harness-codex": "1.0.94",
+    "@ai-sdk/provider-utils": "5.0.32",
     "bunup": "^0.16.32",
-    "microsandbox": "0.6.8",
+    "microsandbox": "0.6.15",
     "typescript": "^6.0.3"
   },
   "publishConfig": {
