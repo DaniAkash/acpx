@@ -52,9 +52,9 @@
     "ai": ">=7.0.0-beta.0"
   },
   "devDependencies": {
-    "@ai-sdk/provider": "4.0.7",
-    "@ai-sdk/provider-utils": "5.0.27",
-    "acpx": "^0.13.0",
+    "@ai-sdk/provider": "4.0.8",
+    "@ai-sdk/provider-utils": "5.0.32",
+    "acpx": "^0.13.1",
     "acpx-test-helpers": "workspace:*",
     "ai": "7.0.0-beta.116",
     "bunup": "^0.16.32",
